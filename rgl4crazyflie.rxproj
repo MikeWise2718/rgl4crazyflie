@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>c34c330c-a2a6-4a97-ad34-0e4c4b5fd5e1</ProjectGuid>
@@ -9,7 +9,11 @@
     <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupFile>script.R</StartupFile>
+    <StartupFile>rgl4crazyflie.R</StartupFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <ResetReplOnRun>False</ResetReplOnRun>
+    <CommandLineArgs />
   </PropertyGroup>
   <ProjectExtensions>
     <VisualStudio>
