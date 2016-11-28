@@ -225,6 +225,8 @@ plotWholeThing <- function(partList,doc) {
       ntrn <- xml_find_first(it, ".//*[local-name()='Translation']")
       #print(sprintf("   %s", as.character(trn)))
       print(xml_text(ntrn))
+      # no idea where this factor of 1000 comes from
+      # some STL brain damage no doubt
       trn <- 1000*as.numeric(str_split(xml_text(ntrn), "\\s")[[1]])
 
       print(trn)
