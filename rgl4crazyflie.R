@@ -82,18 +82,24 @@ vhashtab <- hash()
 nvsaved <- 0
 nvtot <- 0
 
-addVertHashed <- function(mList,v) {
+addVertHashed <- function(mList,v,n = NULL) {
   ni <- length(mList$idxList)
   np <- length(mList$pntList)
   vkey <- paste0(sprintf("%e",v),collapse=",")
   if (has.key(vkey,vhashtab)) {
-    nval <- vhashtab[[vkey]]
+    vval <- vhashtab[[vkey]]
     #print(sprintf("np:%d ni:%d vkey:%s nval:%d",np,ni,vkey,nval))
-    mList$idxList <- c(mList$idxList,nval)
+    mList$idxList <- c(mList$idxList,vval$vnum)
+    if (!is.null(n)) {
+      vval$norm <- vval$norm + n
+    }
     nvsaved <<- nvsaved+1
   } else {
-    vnum <- (np+3)/3
-    vhashtab[vkey] <- vnum
+    vnum <- (np + 3) / 3
+    vval <- list()
+    vval$vnum <- vnum
+    if (!is.null(n)) vval$norm <- n
+    vhashtab[vkey] <- vval
     mList$pntList <- c(mList$pntList,v[1],v[2],v[3])
     mList$idxList <- c(mList$idxList,vnum)
     nvtot <<- nvtot+1
@@ -101,7 +107,8 @@ addVertHashed <- function(mList,v) {
   return(mList)
 }
 
-addVert <- function(mList,v) {
+addVert <- function(mList,v,n = NULL) {
+  # no hashing
   ni <- length(mList$idxList)
   np <- length(mList$pntList)
   mList$pntList <- c(mList$pntList, v[1],v[2],v[3])
@@ -110,38 +117,97 @@ addVert <- function(mList,v) {
   return(mList)
 }
 
-addTri <- function(mList, v1, v2, v3) {
-  mList <- addVertHashed(mList,v1)
-  mList <- addVertHashed(mList,v2)
-  mList <- addVertHashed(mList,v3)
+addTri <- function(mList, v1, v2, v3,norm) {
+  mList <- addVertHashed(mList,v1,norm)
+  mList <- addVertHashed(mList,v2,norm)
+  mList <- addVertHashed(mList,v3,norm)
   return(mList)
 }
 
-plotPartAsMesh <- function(vertList,trn = c(0,0,0),rot = NULL,color = "silver",alpha = 1,shiny = shiny) {
+normalize <- function(n) {
+  vlen <- sqrt(n[[1]]^2 + n[[2]]^2 + n[[3]]^2)
+  if (vlen>0) {
+    n <- n/vlen
+  }
+  return(n)
+}
+
+plotPartAsMesh <- function(compname,partname,vertList,trn = c(0,0,0),rot = NULL,
+                           color = "silver",alpha = 1,shiny = shiny,donorms = F,savefiles=F) {
   vhashtab <<- hash()
   mList <- list()
   mList$idxList <- list()
   mList$pntList <- list()
-
+  mList$nrmList <- list()
+  normval <- NULL
   for (v in vertList) {
     if (length(v) == 4) {
-      mList <- addTri(mList,v[[2]],v[[3]],v[[4]]) 
+      if (donorms) normval <- v[[1]]
+      mList <- addTri(mList,v[[2]],v[[3]],v[[4]],normval) 
     }
   }
   vidx <- unlist(mList$idxList)
   vpnt <- unlist(mList$pntList)
-
   nv <- length(vertList)
   ni <- length(vidx)
   np <- length(vpnt)
+
+  if (donorms) {
+    nn <- np / 3
+    for (i in 1:nn) {
+      bidx <- (i-1)*3
+      v1 <- vpnt[[bidx+1]]
+      v2 <- vpnt[[bidx+2]]
+      v3 <- vpnt[[bidx+3]]
+      v <- c(v1,v2,v3)
+      vkey <- paste0(sprintf("%e",v),collapse = ",")
+      vval <- vhashtab[[vkey]]
+      mList$nrmList <- c(mList$nrmList,normalize(vval$norm))
+    }
+    vnrm <- unlist(mList$nrmList)
+  }
+
+
   vsv <- 3*nv - np
-  print(sprintf("tmesh3d - nv:%d np:%d ni:%d maxi:%d mini:%d - vsaved:%d",nv,np,ni,max(vidx),min(vidx),vsv))
-  part <- tmesh3d(vpnt,vidx,homogeneous=F)
-  part <- translate3d(rotate3d(part,matrix=rot), trn[[1]],trn[[2]],trn[[3]] )
+  print(sprintf("   tmesh3d - nv:%d np:%d ni:%d maxi:%d mini:%d - vsaved:%d",nv,np,ni,max(vidx),min(vidx),vsv))
+  if (donorms) {
+    part <- tmesh3d(vpnt,vidx,homogeneous=F, normals=vnrm)
+  } else {
+    part <- tmesh3d(vpnt,vidx,homogeneous=F)
+  }
+  part <- translate3d(rotate3d(part,matrix = rot),trn[[1]],trn[[2]],trn[[3]])
+  pcbcen <- -0.5*c(54.09200, 71.18820, 75.60720)
+  #pcbcen <- -10 * c(3.686,3.686,3.685)
+  part <- translate3d(part,pcbcen[[1]],pcbcen[[2]],pcbcen[[3]])
+  part <- rotate3d(part,pi,0,1,0 )
+  calccog <- T
+  if (calccog) {
+    vb <- part$vb
+    nvb <- length(vb)
+    bsq <- (1:(nvb/4) - 1)*4
+    xc <- vb[bsq + 1]
+    yc <- vb[bsq + 2]
+    zc <- vb[bsq + 3]
+    wc <- vb[bsq + 4]
+    cx <- mean(min(xc) + max(xc))
+    cy <- mean(min(yc) + max(yc))
+    cz <- mean(min(zc) + max(zc))
+    cw <- mean(min(wc) + max(wc))
+    tx <- max(xc) - min(xc)
+    ty <- max(yc) - min(yc)
+    tz <- max(zc) - min(zc)
+    tw <- max(wc) - min(wc)
+#    cx <- mean(vpnt[bsq+1])
+#    cy <- mean(vpnt[bsq+2])
+#    cz <- mean(vpnt[bsq+3])
+    print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw, tx,ty,tz,tw))
+  }
   shade3d(part,color = color,alpha = alpha,shiny = shiny)
+  if (savefiles) {
+  }
 }
 
-plotPart <- function(vertList,trn = c(0,0,0),rot = NULL,color = "silver",alpha = 1,shiny = shiny) {
+plotPart <- function(compname,partname,vertList,trn = c(0,0,0),rot = NULL,color = "silver",alpha = 1,shiny = shiny) {
   lx <- list()
   ly <- list()
   lz <- list()
@@ -198,7 +264,7 @@ addAxes <- function(len = 1) {
 partList <- sapply(stlfiles, function(x) loadStl(stldir, x))
 
 # Temp and ugly
-colors <- c("white", "gray", "gray", "green", "yellow", "darkgray", "black", "orange")
+colors <- c("white", "gray", "gray", "green", "yellow", "blue", "black", "orange")
 alpha <- c(0.4, 1, 1, 1, 1, 1, 1, 1)
 shine <- c(50, 50, 50, 50, 50, 50, 50, 50)
 for (i in 1:8) {
@@ -243,6 +309,40 @@ getElement <- function(partlist, need) {
 }
 
 plotWholeThing <- function(partList,doc) {
+  itree <- xml_find_first(doc,"//*[local-name()='InstanceTree']")
+  its <- xml_find_all(doc,"//*[local-name()='Instance']")
+  for (it in its) {
+    #print(as.character(it))
+    compname <- xml_attr(it,"name")
+    needpart <- str_split(compname,"-")[[1]][[1]]
+    print(sprintf("Comp:%s need:%s",compname,needpart))
+    tform <- xml_find_first(it,".//*[local-name()='Transform']")
+    if (length(tform) > 0) {
+      nrot <- xml_find_first(it,".//*[local-name()='Rotation']")
+      rot <- matrix(as.numeric(str_split(xml_text(nrot),"\\s")[[1]]),3,3)
+
+      ntrn <- xml_find_first(it,".//*[local-name()='Translation']")
+
+      # no idea where this factor of 1000 comes from (mm -> meters?)
+      # some STL brain damage no doubt
+      trn <- 1000 * as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
+
+      prt <- getElement(partList,needpart)
+      clr <- attr(prt,"color")
+      alf <- attr(prt,"alpha")
+      shn <- attr(prt,"shine")
+      #plotPart(compname,partname,prt, trn, rot, clr, alf, shn)
+      plotPartAsMesh(compname,partname,prt,trn,rot,clr,alf,shn)
+    }
+  }
+  addAxes(len = 50)
+}
+
+
+grabComposition <- function(partList,doc) {
+#  xmlfile <- sprintf("%s/%s",stldir,"Crazyflie_assembly.xml")
+#  doc <- read_xml(xmlfile)
+
   itree <- xml_find_first(doc, "//*[local-name()='InstanceTree']")
   its <- xml_find_all(doc, "//*[local-name()='Instance']")
   for (it in its) {
@@ -265,13 +365,13 @@ plotWholeThing <- function(partList,doc) {
       clr <- attr(prt, "color")
       alf <- attr(prt, "alpha")
       shn <- attr(prt, "shine")
-      #plotPart(prt, trn, rot, clr, alf, shn)
-      plotPartAsMesh(prt, trn, rot, clr, alf, shn)
-
+      #plotPart(compname,partname,prt, trn, rot, clr, alf, shn)
+      plotPartAsMesh(compname,partname,prt, trn, rot, clr, alf, shn)
     }
   }
   addAxes(len = 50)
 }
+axes3d()
 
 xmlfile <- sprintf("%s/%s", stldir, "Crazyflie_assembly.xml")
 doc <- read_xml(xmlfile)
