@@ -308,75 +308,123 @@ getElement <- function(partlist, need) {
   return(NULL)
 }
 
-plotWholeThing <- function(partList,doc) {
-  itree <- xml_find_first(doc,"//*[local-name()='InstanceTree']")
-  its <- xml_find_all(doc,"//*[local-name()='Instance']")
-  for (it in its) {
-    #print(as.character(it))
-    compname <- xml_attr(it,"name")
+plotWholeThing <- function(partList,compList) {
+  for (cp in compList) {
+
+    compname <- cp$compname
     needpart <- str_split(compname,"-")[[1]][[1]]
     print(sprintf("Comp:%s need:%s",compname,needpart))
-    tform <- xml_find_first(it,".//*[local-name()='Transform']")
-    if (length(tform) > 0) {
-      nrot <- xml_find_first(it,".//*[local-name()='Rotation']")
-      rot <- matrix(as.numeric(str_split(xml_text(nrot),"\\s")[[1]]),3,3)
+    rot <- cp$rot
+    trn <- cp$trn
 
-      ntrn <- xml_find_first(it,".//*[local-name()='Translation']")
+    prt <- getElement(partList,needpart)
+    clr <- attr(prt,"color")
+    alf <- attr(prt,"alpha")
+    shn <- attr(prt,"shine")
 
-      # no idea where this factor of 1000 comes from (mm -> meters?)
-      # some STL brain damage no doubt
-      trn <- 1000 * as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
+  #  clr <- cp$ambient[1:3]
+  #  alf <- cp$ambient[4]
 
-      prt <- getElement(partList,needpart)
-      clr <- attr(prt,"color")
-      alf <- attr(prt,"alpha")
-      shn <- attr(prt,"shine")
       #plotPart(compname,partname,prt, trn, rot, clr, alf, shn)
-      plotPartAsMesh(compname,partname,prt,trn,rot,clr,alf,shn)
-    }
+    plotPartAsMesh(compname,partname,prt,trn,rot,clr,alf,shn)
   }
   addAxes(len = 50)
+  axes3d()
 }
 
 
-grabComposition <- function(partList,doc) {
-#  xmlfile <- sprintf("%s/%s",stldir,"Crazyflie_assembly.xml")
-#  doc <- read_xml(xmlfile)
-
+grabComposition <- function(stldir,xfname) {
+  xmlfile <- sprintf("%s/%s",stldir,xfname)
+  doc <- read_xml(xmlfile)
+  compList <- list()
   itree <- xml_find_first(doc, "//*[local-name()='InstanceTree']")
   its <- xml_find_all(doc, "//*[local-name()='Instance']")
   for (it in its) {
     #print(as.character(it))
     compname <- xml_attr(it, "name")
     needpart <- str_split(compname,"-")[[1]][[1]]
+    thisCompPart <- list()
+    thisCompPart$compname <- compname
+    thisCompPart$partname <- needpart
+
     print(sprintf("Comp:%s need:%s",compname,needpart))
     tform <- xml_find_first(it, ".//*[local-name()='Transform']")
     if (length(tform) > 0) {
       nrot <- xml_find_first(it, ".//*[local-name()='Rotation']")
       rot <- matrix(as.numeric(str_split(xml_text(nrot), "\\s")[[1]]),3,3)
-
+      thisCompPart$rot <- rot
       ntrn <- xml_find_first(it,".//*[local-name()='Translation']")
-
       # no idea where this factor of 1000 comes from (mm -> meters?)
       # some STL brain damage no doubt
-      trn <- 1000 * as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
-
-      prt <- getElement(partList,needpart)
-      clr <- attr(prt, "color")
-      alf <- attr(prt, "alpha")
-      shn <- attr(prt, "shine")
-      #plotPart(compname,partname,prt, trn, rot, clr, alf, shn)
-      plotPartAsMesh(compname,partname,prt, trn, rot, clr, alf, shn)
+      trn <- 1000.0*as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
+      thisCompPart$trn <- trn
+      compList[[compname]] <- thisCompPart
     }
   }
-  addAxes(len = 50)
+  return(compList)
 }
-axes3d()
+
+getCompElement <- function(compList,need) {
+  #print(sprintf("getElement:%s",need))
+  for (p in compList) {
+    pelid <- p$compname
+    #print(sprintf("   detecting:%s",pelid))
+    if (str_detect(pelid,need)) {
+      #print(sprintf("returning:%s",pelid))
+      return(p)
+    }
+  }
+  #print(sprintf("returning NULL"))
+  return(NULL)
+}
+
+grabMaterials <- function(stldir,xfname,compList) {
+  xmlfile <- sprintf("%s/%s",stldir,xfname)
+  doc <- read_xml(xmlfile)
+
+  its <- xml_find_all(doc,"//*[local-name()='Part']")
+  for (it in its) {
+    #print(as.character(it))
+    compname <- xml_attr(it,"name")
+    cp <- getCompElement(compList,compname)
+    if (!is.null(cp)) {
+      print(sprintf("Part:%s",compname))
+      nod <- xml_find_first(it,".//*[local-name()='Ambient']")
+      cp$ambient <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      nod <- xml_find_first(it,".//*[local-name()='Diffuse']")
+      cp$diffuse <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      nod <- xml_find_first(it,".//*[local-name()='Specular']")
+      cp$specular <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      nod <- xml_find_first(it,".//*[local-name()='Emissive']")
+      cp$emissive <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      print(sprintf("   amb - %.3f",cp$ambient))
+      print(sprintf("   dif - %.3f",cp$diffuse))
+      print(sprintf("   spc - %.3f",cp$specular))
+      print(sprintf("   emi - %.3f",cp$emissive))
+      compList[[compname]] <- cp
+    }
+  }
+  return(compList)
+}
+
+
+
+printComposition <- function(compList) {
+  for (cp in compList) {
+    print(sprintf("%s - %s",cp$compname,cp$partname))
+    print(cp$rot)
+    print(cp$trn)
+  }
+}
+
+compList <- grabComposition(stldir,"Crazyflie_assembly.xml")
+compList <- grabMaterials(stldir,"Crazyflie_assembly.xml",compList)
+#printComposition(compList)
 
 xmlfile <- sprintf("%s/%s", stldir, "Crazyflie_assembly.xml")
 doc <- read_xml(xmlfile)
 
-plotWholeThing(partList,doc)
+plotWholeThing(partList,compList)
 #d <- read_xml("simple1.xml")
 #bstree <- xml_find_all(d, ".//bs:stmt") # Transaction Type
 elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
