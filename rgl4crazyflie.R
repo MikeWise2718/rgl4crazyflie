@@ -202,6 +202,7 @@ plotPartAsMesh <- function(compname,partname,vertList,trn = c(0,0,0),rot = NULL,
 #    cz <- mean(vpnt[bsq+3])
     print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw, tx,ty,tz,tw))
   }
+
   shade3d(part,color = color,alpha = alpha,shiny = shiny)
   if (savefiles) {
   }
@@ -308,22 +309,26 @@ getElement <- function(partlist, need) {
   return(NULL)
 }
 
-plotWholeThing <- function(partList,compList) {
+plotWholeThing <- function(partAttList,partList,compList) {
   for (cp in compList) {
 
     compname <- cp$compname
-    needpart <- str_split(compname,"-")[[1]][[1]]
-    print(sprintf("Comp:%s need:%s",compname,needpart))
+    partname <- str_split(compname,"-")[[1]][[1]]
+    print(sprintf("Comp:%s part:%s",compname,partname))
     rot <- cp$rot
     trn <- cp$trn
 
-    prt <- getElement(partList,needpart)
+    prt <- getElement(partList,partname)
     clr <- attr(prt,"color")
     alf <- attr(prt,"alpha")
     shn <- attr(prt,"shine")
 
-  #  clr <- cp$ambient[1:3]
-  #  alf <- cp$ambient[4]
+    prta <- getAttElement(partAttList,partname)
+    iclr <- round(255 * prta$ambient[1:3])
+    clr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
+    #alf <- prta$ambient[4]
+    print(prta$ambient)
+
 
       #plotPart(compname,partname,prt, trn, rot, clr, alf, shn)
     plotPartAsMesh(compname,partname,prt,trn,rot,clr,alf,shn)
@@ -334,9 +339,9 @@ plotWholeThing <- function(partList,compList) {
 
 
 grabComposition <- function(stldir,xfname) {
+  compList <- list()
   xmlfile <- sprintf("%s/%s",stldir,xfname)
   doc <- read_xml(xmlfile)
-  compList <- list()
   itree <- xml_find_first(doc, "//*[local-name()='InstanceTree']")
   its <- xml_find_all(doc, "//*[local-name()='Instance']")
   for (it in its) {
@@ -367,10 +372,10 @@ grabComposition <- function(stldir,xfname) {
 getCompElement <- function(compList,need) {
   #print(sprintf("getElement:%s",need))
   for (p in compList) {
-    pelid <- p$compname
-    #print(sprintf("   detecting:%s",pelid))
-    if (str_detect(pelid,need)) {
-      #print(sprintf("returning:%s",pelid))
+    cname <- p$partname
+    #print(sprintf("   detecting:%s",cname))
+    if (str_detect(cname,need)) {
+      #print(sprintf("returning:%s",cname))
       return(p)
     }
   }
@@ -378,33 +383,49 @@ getCompElement <- function(compList,need) {
   return(NULL)
 }
 
-grabMaterials <- function(stldir,xfname,compList) {
+getAttElement <- function(partAttList,need) {
+  #print(sprintf("getElement:%s",need))
+  for (p in partAttList) {
+    pname <- p$partname
+    #print(sprintf("   detecting:%s",pname))
+    if (str_detect(pname,need)) {
+      #print(sprintf("returning:%s",pname))
+      return(p)
+    }
+  }
+  #print(sprintf("returning NULL"))
+  return(NULL)
+}
+
+grabMaterials <- function(stldir,xfname) {
+  partAttList <- list()
   xmlfile <- sprintf("%s/%s",stldir,xfname)
   doc <- read_xml(xmlfile)
 
   its <- xml_find_all(doc,"//*[local-name()='Part']")
   for (it in its) {
     #print(as.character(it))
-    compname <- xml_attr(it,"name")
-    cp <- getCompElement(compList,compname)
-    if (!is.null(cp)) {
-      print(sprintf("Part:%s",compname))
+    partname <- xml_attr(it,"name")
+    prt <- list()
+    prt$partname <- partname
+    if (!is.null(prt)) {
+      print(sprintf("Part:%s",partname))
       nod <- xml_find_first(it,".//*[local-name()='Ambient']")
-      cp$ambient <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      prt$ambient <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
       nod <- xml_find_first(it,".//*[local-name()='Diffuse']")
-      cp$diffuse <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      prt$diffuse <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
       nod <- xml_find_first(it,".//*[local-name()='Specular']")
-      cp$specular <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      prt$specular <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
       nod <- xml_find_first(it,".//*[local-name()='Emissive']")
-      cp$emissive <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
-      print(sprintf("   amb - %.3f",cp$ambient))
-      print(sprintf("   dif - %.3f",cp$diffuse))
-      print(sprintf("   spc - %.3f",cp$specular))
-      print(sprintf("   emi - %.3f",cp$emissive))
-      compList[[compname]] <- cp
+      prt$emissive <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      print(sprintf("   amb - %.3f",prt$ambient))
+      print(sprintf("   dif - %.3f",prt$diffuse))
+      print(sprintf("   spc - %.3f",prt$specular))
+      print(sprintf("   emi - %.3f",prt$emissive))
+      partAttList[[partname]] <- prt
     }
   }
-  return(compList)
+  return(partAttList)
 }
 
 
@@ -418,13 +439,12 @@ printComposition <- function(compList) {
 }
 
 compList <- grabComposition(stldir,"Crazyflie_assembly.xml")
-compList <- grabMaterials(stldir,"Crazyflie_assembly.xml",compList)
+partAttList <- grabMaterials(stldir,"Crazyflie_assembly.xml")
 #printComposition(compList)
 
-xmlfile <- sprintf("%s/%s", stldir, "Crazyflie_assembly.xml")
-doc <- read_xml(xmlfile)
 
-plotWholeThing(partList,compList)
+
+plotWholeThing(partAttList,partList,compList)
 #d <- read_xml("simple1.xml")
 #bstree <- xml_find_all(d, ".//bs:stmt") # Transaction Type
 elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
