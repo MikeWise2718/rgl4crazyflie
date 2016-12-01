@@ -51,7 +51,7 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
     return(NULL)
   }
   print(sprintf("Read %d lines from %s",nlines0,stlfname))
-  vertList <- list()
+  vertPtList <- list()
 
   # extract the first line which is the name of the part
   partname <- lines[[1]]
@@ -72,7 +72,7 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
   for (line in lines) {
     if (str_detect(line, "facet")) {
       if (length(facetvek) == 4) {
-        vertList <- appendListAsSubEl(vertList,facetvek)
+        vertPtList <- appendListAsSubEl(vertPtList,facetvek)
       }
       facetvek <- list()
       facetvek <- appendListAsSubEl(facetvek,extractVert(line))
@@ -82,11 +82,13 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
       print(sprintf("opps unknown linetype:%s",line))
     }
   }
-  vertList <- appendListAsSubEl(vertList,facetvek) # add the remaining one tp vertlist
-
-  vertPartList[[partname]] <- vertList
+  vertPtList <- appendListAsSubEl(vertPtList,facetvek) # add the remaining one tp vertPtList
+  vertTopList <- list()
+  vertTopList$vertPtList <- vertPtList
+  vertTopList$id <- length(vertPartList)+1
+  vertPartList[[partname]] <- vertTopList
   elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
-  print(sprintf("Extracted %d vertices in %.1f secs for part '%s'", length(vertList),elap,partname))
+  print(sprintf("Extracted %d vertices in %.1f secs for part '%s'", length(vertPtList),elap,partname))
   return(vertPartList)
 }
 
@@ -151,9 +153,10 @@ normalize <- function(n) {
   return(n)
 }
 
-plotPartAsMesh <- function(compname,partname,vertPtList,trn = c(0,0,0),rot = NULL,
-                           color = "silver",alpha = 1,shiny = 50,donorms = F,hashemup=T) {
+plotPartAsMesh <- function(compname,partname,vertTopList,trn = c(0,0,0),rot = NULL,
+                           color = "silver",alpha = 1,shiny = 50,donorms = F,hashemup = T) {
   vhashtab <<- hash()
+  vertPtList <- vertTopList$vertPtList
   mList <- list()
   mList$idxList <- list()
   mList$pntList <- list()
@@ -223,10 +226,14 @@ plotPartAsMesh <- function(compname,partname,vertPtList,trn = c(0,0,0),rot = NUL
     tz <- max(zc) - min(zc)
     tw <- max(wc) - min(wc)
 
-    print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw, tx,ty,tz,tw))
+    print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw,tx,ty,tz,tw))
   }
 
   shade3d(part,color = color,alpha = alpha,shiny = shiny)
+
+  vertTopList$vb <- part$vb
+  vertTopList$vi <- part$it
+  return(vertTopList)
 }
 
 plotPart <- function(compname,partname,vertPtList,trn = c(0,0,0),
@@ -289,24 +296,24 @@ plotWholeThing <- function(partAttList,partVertList,compList) {
     rot <- cp$rot
     trn <- cp$trn
 
-    #vertPtList <- findVertPtList(partVertList,partname)
-    vertPtList <- partVertList[[partname]]
+
 
     prta <- partAttList[[partname]]
-    #if (is.null(prta)) { 
-        #prta <- findPartInPartAttList(partAttList,partname)
-    #}
-    #print(prta)
+
     iclr <- round(255 * prta$ambient[1:3])
     clr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
     alf <- prta$ambient[4]
+    shn <- prta$shinyness
     #print(prta$ambient)
 
-    #plotPart(compname,partname,vertPtList,trn,rot,clr,alf)
-    plotPartAsMesh(compname,partname,vertPtList,trn,rot,clr,alf,hashemup=T)
+    #plotPart(compname,partname,vtl$vertPtList,trn,rot,clr,alf)
+    vtl <- partVertList[[partname]]
+    vtl <- plotPartAsMesh(compname,partname,vtl,trn,rot,clr,alf,shn,hashemup=T)
+    partVertList[[partname]]$vertTopList <- vtl
   }
   addAxes(len = 50)
   axes3d()
+  return(partVertList)
 }
 
 readCompositionFromXml <- function(stldir,xfname) {
@@ -334,6 +341,7 @@ readCompositionFromXml <- function(stldir,xfname) {
       # some STL brain damage no doubt
       trn <- 1000.0*as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
       cp$trn <- trn
+      cp$id <- length(compList)+1
       compList[[compname]] <- cp
     }
   }
@@ -361,10 +369,14 @@ readMaterialsFromXml <- function(stldir,xfname) {
       prt$specular <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
       nod <- xml_find_first(it,".//*[local-name()='Emissive']")
       prt$emissive <- as.numeric(c(xml_attr(nod,"r"),xml_attr(nod,"g"),xml_attr(nod,"b"),xml_attr(nod,"a")))
+      nod <- xml_find_first(it,".//*[local-name()='Shininess']")
+      prt$shinyness <- as.numeric(xml_text(nod))
       print(sprintf("   amb - %.3f",prt$ambient))
       print(sprintf("   dif - %.3f",prt$diffuse))
       print(sprintf("   spc - %.3f",prt$specular))
       print(sprintf("   emi - %.3f",prt$emissive))
+      print(sprintf("   shn - %.3f",prt$shinyness))
+      prt$id <- length(partAttList)+1
       partAttList[[partname]] <- prt
     }
   }
@@ -377,6 +389,58 @@ dumpCompList <- function(compList) {
     print(cp$rot)
     print(cp$trn)
   }
+}
+
+
+writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compList) {
+
+  # Components
+  cdf <- NULL
+  for (c in compList) {
+    c1df <- data.frame(id = c$id,comp = c$compname,part = c$partname)
+    cdf <- rbind(cdf,c1df)
+  }
+  fname <- sprintf("%s-components.csv",fnameroot)
+  write.csv(cdf,fname,row.names = F)
+
+  # Parts
+  pdf <- NULL
+  for (p in partAttList) {
+    p1df <- data.frame(id = p$id,p$partname,
+      amb.r = p$ambient[[1]],amb.g = p$ambient[[2]],amb.b = p$ambient[[3]],amb.a = p$ambient[[4]],
+      dif.r = p$diffuse[[1]],dif.g = p$diffuse[[2]],dif.b = p$diffuse[[3]],dif.a = p$diffuse[[4]],
+      spc.r = p$specular[[1]],spc.g = p$specular[[2]],spc.b = p$specular[[3]],spc.a = p$specular[[4]],
+      emm.r = p$emissive[[1]],emm.g = p$emissive[[2]],emm.b = p$emissive[[3]],emm.a = p$emissive[[4]],
+      shinyness=p$shinyness
+      )
+    pdf <- rbind(pdf,p1df)
+  }
+  fname <- sprintf("%s-parts.csv",fnameroot)
+  write.csv(pdf,fname,row.names = F)
+
+  # Points
+  ptdf <- NULL
+  for (p in partVertList) {
+    vtl <- p$vertTopList
+    pt1df <- as.data.frame(t(vtl$vb))
+    names(pt1df) <- c("x","y","z","w")
+    pt1df$id <- vtl$id
+    ptdf <- rbind(ptdf,pt1df)
+  }
+  fname <- sprintf("%s-points.csv",fnameroot)
+  write.csv(ptdf,fname,row.names = F)
+
+  # VertsIdx
+  ptdf <- NULL
+  for (p in partVertList) {
+    vtl <- p$vertTopList
+    pt1df <- as.data.frame(t(vtl$vi))
+    names(pt1df) <- c("v1","v2","v3")
+    pt1df$id <- vtl$id
+    ptdf <- rbind(ptdf,pt1df)
+  }
+  fname <- sprintf("%s-vertidx.csv",fnameroot)
+  write.csv(ptdf,fname,row.names = F)
 }
 
 # Start of actual program
@@ -399,7 +463,10 @@ compList <- readCompositionFromXml(stldir,"Crazyflie_assembly.xml")
 partAttList <- readMaterialsFromXml(stldir,"Crazyflie_assembly.xml")
 #dumpCompList(compList)
 
-plotWholeThing(partAttList,partVertList,compList)
+partVertList <- plotWholeThing(partAttList,partVertList,compList)
+
+writeOutFiles("crazyflie",partAttList,partVertList,compList)
+
 
 elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
 print(sprintf("Run took %.1f secs for %d verts - verts optimized away:%d", elap,nvtot,nvsaved))
