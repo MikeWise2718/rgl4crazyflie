@@ -1,4 +1,4 @@
-"id","comp","part","trn.x","trn.y","trn.z","rot.11","rot.12","rot.13","rot.21","rot.22","rot.23","rot.31","rot.32","rot.33"
+"id","compname","partname","trn.x","trn.y","trn.z","rot.11","rot.12","rot.13","rot.21","rot.22","rot.23","rot.31","rot.32","rot.33"
 1,"7mm motor mount-4","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
 2,"7mm motor mount-5","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
 3,"7x15 motor-1","7x15 motor",0,0,0,0,0,0,0,0,0,0,0,0

@@ -1,4 +1,4 @@
-"id","p.partname","amb.r","amb.g","amb.b","amb.a","dif.r","dif.g","dif.b","dif.a","spc.r","spc.g","spc.b","spc.a","emm.r","emm.g","emm.b","emm.a","shinyness"
+"id","partname","amb.r","amb.g","amb.b","amb.a","dif.r","dif.g","dif.b","dif.a","spc.r","spc.g","spc.b","spc.a","ems.r","ems.g","ems.b","ems.a","shinyness"
 1,"7mm motor mount",1,1,1,0.5,1,1,1,0.5,0.5,0.5,0.5,0.5,0,0,0,0.5,0.2
 2,"7x15 motor",0.666667,0.698039,0.768627,1,0.666667,0.698039,0.768627,1,0.333333,0.34902,0.384314,1,0,0,0,1,0.3125
 3,"battery bc-bl-01-a",0.898039,0.917647,0.929412,1,0.898039,0.917647,0.929412,1,0.44902,0.458824,0.464706,1,0,0,0,1,0.3125

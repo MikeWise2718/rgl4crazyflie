@@ -43,20 +43,50 @@ cdf <- r$cdf
 pdf <- r$pdf
 ptdf <- r$ptdf
 vidf <- r$vidf
-ptdf$id <- 1
-vidf$id <- 1
+ncomp <- nrow(r$cdf)
+npart <- nrow(r$pdf)
 
-for (i in 1:nrow(r$cdf)) {
-  id <- cdf$id[[i]]
-  cname <- cdf$comp[i]
-  print(as.character(cdf$comp[i]))
+
+colVekToStringColor <- function(clr) {
+  clr <- pmax(0,pmin(clr,1))
+  iclr <- round(255 * clr)
+  hclr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
+  return(hclr)
+}
+
+rgbToStringColor <- function(rvek,gvek,bvek) { 
+  m <- matrix(c(rvek,gvek,bvek),nrow(pdf),3)# matrix with row as r,g,b
+  l <- lapply(1:dim(m)[1],function(x) m[x,]) # now unwrap into a list of rgb's
+  rgb <- sapply(l,colVekToStringColor)
+}
+
+pdf$amb <- rgbToStringColor(pdf$amb.r,pdf$amb.g,pdf$amb.b)
+pdf$dif <- rgbToStringColor(pdf$dif.r,pdf$dif.g,pdf$dif.b)
+pdf$spc <- rgbToStringColor(pdf$spc.r,pdf$spc.g,pdf$spc.b)
+pdf$ems <- rgbToStringColor(pdf$ems.r,pdf$ems.g,pdf$ems.b)
+
+#cdf$rot <- matrix(c(cdf$rot11,cdf$rot12,cdf$13,
+                      #cdf$rot21,cdf$rot22,cdf$23,
+                      #cdf$rot31,cdf$rot32,cdf$33),3,3)
+#cdf$trn <- 
+
+for (cidx in 1:ncomp) {
+  id <- cdf$id[cidx]
+  cname <- cdf$compname[cidx]
+  pname <- cdf$partname[cidx]
+  pidx <- which(pdf$partname == pname)
+  print(as.character(pname))
+  print(pidx)
+
+  print(as.character(cdf$compname[cidx]))
   pt1df <- ptdf[ptdf$id == id,]
   pt1df$id <- NULL
   mpt <- t(as.matrix(pt1df))
   vi1df <- vidf[vidf$id == id,]
   vi1df$id <- NULL
   mvi <- t(as.matrix(vi1df))
-  part <- tmesh3d(mpt,mvi)
+  mesh <- tmesh3d(mpt,mvi)
+  mesh <
   print(sprintf("%s  pts:%d vidx:%d",cname,length(mpt),length(mvi)))
-  shade3d(part)
+  shade3d(mesh,color = pdf$amb[pidx])
 }

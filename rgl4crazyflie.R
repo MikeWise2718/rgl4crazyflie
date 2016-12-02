@@ -153,7 +153,7 @@ normalize <- function(n) {
   return(n)
 }
 
-plotPartAsMesh <- function(compname,partname,vertTopList,trn = c(0,0,0),rot = NULL,
+plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot = NULL,
                            amb = "silver",dif=NULL,spc=NULL,ems=NULL,alf = 1,shiny = 50,donorms = F,hashemup = T) {
   vhashtab <<- hash()
   vertPtList <- vertTopList$vertPtList
@@ -232,48 +232,9 @@ plotPartAsMesh <- function(compname,partname,vertTopList,trn = c(0,0,0),rot = NU
   #shade3d(part)
   shade3d(part,color = amb,specular=spc,emissive=ems,alpha = alf,shiny = shiny)
 
-  vertTopList$vp <- part$vb
-  vertTopList$vi <- part$it
-  return(vertTopList)
-}
-
-plotPart <- function(compname,partname,vertPtList,trn = c(0,0,0),
-                        rot = NULL,color = "silver",alpha = 1,shiny = 50) {
-# This was just a dev routine using triangles3d
-# it is a lot faster since we don't have to hash the vertices for optimization
-# but it has a lot more points (120k instead of around 22k)
-  lx <- list()
-  ly <- list()
-  lz <- list()
-
-  for (v in vertPtList) {
-    if (length(v) == 4) {
-      lx <- c(lx,v[[2]][1],v[[3]][1],v[[4]][1])
-      ly <- c(ly,v[[2]][2],v[[3]][2],v[[4]][2])
-      lz <- c(lz,v[[2]][3],v[[3]][3],v[[4]][3])
-    }
-  }
-  vx <- unlist(lx)
-  vy <- unlist(ly)
-  vz <- unlist(lz)
-
-  if (!is.null(rot)) {
-    #print("rotating")
-    ux <- vx
-    uy <- vy
-    uz <- vz
-    vx <- ux*rot[1,1] + uy*rot[2,1] + uz*rot[3,1]
-    vy <- ux*rot[1,2] + uy*rot[2,2] + uz*rot[3,2]
-    vz <- ux*rot[1,3] + uy*rot[2,3] + uz*rot[3,3]
-  }
-  #print("translating")
-  vx <- vx + trn[[1]]
-  vy <- vy + trn[[2]]
-  vz <- vz + trn[[3]]
-
-  nvtot <<- nvtot + length(vx)
-
-  triangles3d(vx,vy,vz,color = color,alpha = alpha,shiny = shiny)
+  comp$vp <- part$vb
+  comp$vi <- part$it
+  return(comp)
 }
 
 addAxes <- function(len = 1) {
@@ -288,7 +249,7 @@ addAxes <- function(len = 1) {
   text3d(v,w,u,c("","Z"),color=c("blue"))
 }
 
-coltohashstring <- function(clr) {
+colVekToStringColor <- function(clr) {
   clr <- pmax(0,pmin(clr,1))
   iclr <- round(255 * clr)
   hclr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
@@ -308,22 +269,21 @@ plotWholeThing <- function(partAttList,partVertList,compList) {
 
     prta <- partAttList[[partname]]
 
-    amb <- coltohashstring(prta$ambient)
-    dif <- coltohashstring(prta$diffuse)
-    spc <- coltohashstring(prta$specular)
-    ems <- coltohashstring(prta$emissive)
+    amb <- colVekToStringColor(prta$ambient)
+    dif <- colVekToStringColor(prta$diffuse)
+    spc <- colVekToStringColor(prta$specular)
+    ems <- colVekToStringColor(prta$emissive)
     alf <- prta$ambient[4]
     shn <- prta$shinyness
     #print(prta$ambient)
 
-    #plotPart(compname,partname,vtl$vertPtList,trn,rot,clr,alf)
     vtl <- partVertList[[partname]]
-    vtl <- plotPartAsMesh(compname,partname,vtl, trn,rot, amb,dif,spc,ems,alf,shn, hashemup=T)
-    partVertList[[partname]]$vertTopList <- vtl
+    newcp <- plotPartAsMesh(compname,partname,vtl,cp, trn,rot, amb,dif,spc,ems,alf,shn, hashemup=T)
+    compList[[compname]] <- newcp
   }
   addAxes(len = 50)
   axes3d()
-  return(partVertList)
+  return(compList)
 }
 
 readCompositionFromXml <- function(stldir,xfname) {
@@ -411,7 +371,7 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   for (c in compList) {
     v <- c$ntrn
     m <- c$nrot
-    c1df <- data.frame(id = c$id,comp = c$compname,part = c$partname,
+    c1df <- data.frame(id = c$id,compname = c$compname,partname = c$partname,
                        trn.x = v[1],trn.y = v[2],trn.z = v[3],
                        rot.11 = m[1,1],rot.12 = m[1,2],rot.13 = m[1,3],
                        rot.21 = m[1,1],rot.22 = m[1,2],rot.23 = m[1,3],
@@ -425,11 +385,11 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # Parts
   pdf <- NULL
   for (p in partAttList) {
-    p1df <- data.frame(id = p$id,p$partname,
+    p1df <- data.frame(id = p$id,partname=p$partname,
       amb.r = p$ambient[[1]],amb.g = p$ambient[[2]],amb.b = p$ambient[[3]],amb.a = p$ambient[[4]],
       dif.r = p$diffuse[[1]],dif.g = p$diffuse[[2]],dif.b = p$diffuse[[3]],dif.a = p$diffuse[[4]],
       spc.r = p$specular[[1]],spc.g = p$specular[[2]],spc.b = p$specular[[3]],spc.a = p$specular[[4]],
-      emm.r = p$emissive[[1]],emm.g = p$emissive[[2]],emm.b = p$emissive[[3]],emm.a = p$emissive[[4]],
+      ems.r = p$emissive[[1]],ems.g = p$emissive[[2]],ems.b = p$emissive[[3]],ems.a = p$emissive[[4]],
       shinyness=p$shinyness
       )
     pdf <- rbind(pdf,p1df)
@@ -439,11 +399,10 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
 
   # Points
   ptdf <- NULL
-  for (p in partVertList) {
-    vtl <- p$vertTopList
-    pt1df <- as.data.frame(t(vtl$vp))
+  for (c in compList) {
+    pt1df <- as.data.frame(t(c$vp))
     names(pt1df) <- c("x","y","z","w")
-    pt1df$id <- vtl$id
+    pt1df$id <- c$id
     ptdf <- rbind(ptdf,pt1df)
   }
   fname <- sprintf("%s-points.csv",fnameroot)
@@ -451,11 +410,10 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
 
   # VertsIdx
   ptdf <- NULL
-  for (p in partVertList) {
-    vtl <- p$vertTopList
-    pt1df <- as.data.frame(t(vtl$vi))
+  for (c in compList) {
+    pt1df <- as.data.frame(t(c$vi))
     names(pt1df) <- c("v1","v2","v3")
-    pt1df$id <- vtl$id
+    pt1df$id <- c$id
     ptdf <- rbind(ptdf,pt1df)
   }
   fname <- sprintf("%s-vertidx.csv",fnameroot)
@@ -482,16 +440,9 @@ compList <- readCompositionFromXml(stldir,"Crazyflie_assembly.xml")
 partAttList <- readMaterialsFromXml(stldir,"Crazyflie_assembly.xml")
 #dumpCompList(compList)
 
-# fix up ids since we know them now
-for (pvl in partVertList) {
-  print(pvl$partname)
-  pvl$vertTopList$id <- partAttList[[pvl$partname]]$id
-}
-
-partVertList <- plotWholeThing(partAttList,partVertList,compList)
+compList <- plotWholeThing(partAttList,partVertList,compList)
 
 writeOutFiles("crazyflie",partAttList,partVertList,compList)
-
 
 elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
 print(sprintf("Run took %.1f secs for %d verts - verts optimized away:%d", elap,nvtot,nvsaved))
