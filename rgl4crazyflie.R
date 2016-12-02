@@ -19,7 +19,7 @@ library(hash)
 appendListAsSubEl <- function(vlist,v) {
   # Append a list to a list as a sub-element 
   # i.e. do not merge the lists (thus losing structure)
-  # and retain it attributes 
+  # and retain the top list's attributes 
   if (!is.null(v)) {
     vlist[[length(vlist) + 1]] <- v
     # Note, if we use the faster method below, we loose the attributes of vlist!
@@ -85,7 +85,7 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
   vertPtList <- appendListAsSubEl(vertPtList,facetvek) # add the remaining one tp vertPtList
   vertTopList <- list()
   vertTopList$vertPtList <- vertPtList
-  vertTopList$id <- length(vertPartList)+1
+  vertTopList$partname <- partname
   vertPartList[[partname]] <- vertTopList
   elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
   print(sprintf("Extracted %d vertices in %.1f secs for part '%s'", length(vertPtList),elap,partname))
@@ -154,7 +154,7 @@ normalize <- function(n) {
 }
 
 plotPartAsMesh <- function(compname,partname,vertTopList,trn = c(0,0,0),rot = NULL,
-                           color = "silver",alpha = 1,shiny = 50,donorms = F,hashemup = T) {
+                           amb = "silver",dif=NULL,spc=NULL,ems=NULL,alf = 1,shiny = 50,donorms = F,hashemup = T) {
   vhashtab <<- hash()
   vertPtList <- vertTopList$vertPtList
   mList <- list()
@@ -228,10 +228,11 @@ plotPartAsMesh <- function(compname,partname,vertTopList,trn = c(0,0,0),rot = NU
 
     print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw,tx,ty,tz,tw))
   }
+  #rgl.material(color=amb,alpha=alf,specular=spc,shininess=shiny)
+  #shade3d(part)
+  shade3d(part,color = amb,specular=spc,emissive=ems,alpha = alf,shiny = shiny)
 
-  shade3d(part,color = color,alpha = alpha,shiny = shiny)
-
-  vertTopList$vb <- part$vb
+  vertTopList$vp <- part$vb
   vertTopList$vi <- part$it
   return(vertTopList)
 }
@@ -287,6 +288,13 @@ addAxes <- function(len = 1) {
   text3d(v,w,u,c("","Z"),color=c("blue"))
 }
 
+coltohashstring <- function(clr) {
+  clr <- pmax(0,pmin(clr,1))
+  iclr <- round(255 * clr)
+  hclr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
+  return(hclr)
+}
+
 plotWholeThing <- function(partAttList,partVertList,compList) {
   for (cp in compList) {
 
@@ -300,15 +308,17 @@ plotWholeThing <- function(partAttList,partVertList,compList) {
 
     prta <- partAttList[[partname]]
 
-    iclr <- round(255 * prta$ambient[1:3])
-    clr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
+    amb <- coltohashstring(prta$ambient)
+    dif <- coltohashstring(prta$diffuse)
+    spc <- coltohashstring(prta$specular)
+    ems <- coltohashstring(prta$emissive)
     alf <- prta$ambient[4]
     shn <- prta$shinyness
     #print(prta$ambient)
 
     #plotPart(compname,partname,vtl$vertPtList,trn,rot,clr,alf)
     vtl <- partVertList[[partname]]
-    vtl <- plotPartAsMesh(compname,partname,vtl,trn,rot,clr,alf,shn,hashemup=T)
+    vtl <- plotPartAsMesh(compname,partname,vtl, trn,rot, amb,dif,spc,ems,alf,shn, hashemup=T)
     partVertList[[partname]]$vertTopList <- vtl
   }
   addAxes(len = 50)
@@ -342,6 +352,8 @@ readCompositionFromXml <- function(stldir,xfname) {
       trn <- 1000.0*as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
       cp$trn <- trn
       cp$id <- length(compList)+1
+      cp$ntrn <- c(0,0,0)
+      cp$nrot <- matrix(0,3,3)
       compList[[compname]] <- cp
     }
   }
@@ -397,7 +409,14 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # Components
   cdf <- NULL
   for (c in compList) {
-    c1df <- data.frame(id = c$id,comp = c$compname,part = c$partname)
+    v <- c$ntrn
+    m <- c$nrot
+    c1df <- data.frame(id = c$id,comp = c$compname,part = c$partname,
+                       trn.x = v[1],trn.y = v[2],trn.z = v[3],
+                       rot.11 = m[1,1],rot.12 = m[1,2],rot.13 = m[1,3],
+                       rot.21 = m[1,1],rot.22 = m[1,2],rot.23 = m[1,3],
+                       rot.31 = m[1,1],rot.32 = m[1,2],rot.33 = m[1,3]
+                       )
     cdf <- rbind(cdf,c1df)
   }
   fname <- sprintf("%s-components.csv",fnameroot)
@@ -422,7 +441,7 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   ptdf <- NULL
   for (p in partVertList) {
     vtl <- p$vertTopList
-    pt1df <- as.data.frame(t(vtl$vb))
+    pt1df <- as.data.frame(t(vtl$vp))
     names(pt1df) <- c("x","y","z","w")
     pt1df$id <- vtl$id
     ptdf <- rbind(ptdf,pt1df)
@@ -462,6 +481,12 @@ for (fname in stlfiles) {
 compList <- readCompositionFromXml(stldir,"Crazyflie_assembly.xml")
 partAttList <- readMaterialsFromXml(stldir,"Crazyflie_assembly.xml")
 #dumpCompList(compList)
+
+# fix up ids since we know them now
+for (pvl in partVertList) {
+  print(pvl$partname)
+  pvl$vertTopList$id <- partAttList[[pvl$partname]]$id
+}
 
 partVertList <- plotWholeThing(partAttList,partVertList,compList)
 
