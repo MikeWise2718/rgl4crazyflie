@@ -39,6 +39,18 @@ r <- readMesh("crazyflie")
 
 open3d()
 
+addAxes <- function(len = 1) {
+  u <- c(0,1) * len
+  v <- c(0,0)
+  w <- c(0,0)
+  lines3d(u,v,w,color = c("red"))
+  text3d(u,v,w,c("","X"),color = c("red"))
+  lines3d(w,u,v,color = c("green"))
+  text3d(w,u,v,c("","Y"),color = c("green"))
+  lines3d(v,w,u,color = c("blue"))
+  text3d(v,w,u,c("","Z"),color = c("blue"))
+}
+
 cdf <- r$cdf
 pdf <- r$pdf
 ptdf <- r$ptdf
@@ -65,28 +77,50 @@ pdf$dif <- rgbToStringColor(pdf$dif.r,pdf$dif.g,pdf$dif.b)
 pdf$spc <- rgbToStringColor(pdf$spc.r,pdf$spc.g,pdf$spc.b)
 pdf$ems <- rgbToStringColor(pdf$ems.r,pdf$ems.g,pdf$ems.b)
 
-#cdf$rot <- matrix(c(cdf$rot11,cdf$rot12,cdf$13,
-                      #cdf$rot21,cdf$rot22,cdf$23,
-                      #cdf$rot31,cdf$rot32,cdf$33),3,3)
-#cdf$trn <- 
+getRot <- function(cdf,cidx) {
+  rot <- matrix(c(cdf$rot.11[cidx],cdf$rot.12[cidx],cdf$rot.13[cidx],
+                  cdf$rot.21[cidx],cdf$rot.22[cidx],cdf$rot.23[cidx],
+                  cdf$rot.31[cidx],cdf$rot.32[cidx],cdf$rot.33[cidx]),3,3)
+  if (sum(abs(rot)) == 0) {
+    return(matrix(c(1,0,0,0,1,0,0,0,1),3,3))
+  } else {
+    return(rot)
+  }
+}
+getTrn <- function(cdf,cidx) {
+  trn <- c(cdf$trn.x[cidx],cdf$trn.y[cidx],cdf$trn.z[cidx])
+  return(trn)
+}
 
 for (cidx in 1:ncomp) {
-  id <- cdf$id[cidx]
+  # setup
+  cid <- cdf$id[cidx]
   cname <- cdf$compname[cidx]
   pname <- cdf$partname[cidx]
   pidx <- which(pdf$partname == pname)
-  print(as.character(pname))
-  print(pidx)
 
-  print(as.character(cdf$compname[cidx]))
-  pt1df <- ptdf[ptdf$id == id,]
+  # get the points for this component
+  pt1df <- ptdf[ptdf$id == cid,]
   pt1df$id <- NULL
   mpt <- t(as.matrix(pt1df))
-  vi1df <- vidf[vidf$id == id,]
+
+  # get the indexs for this component
+  vi1df <- vidf[vidf$id == cid,]
   vi1df$id <- NULL
   mvi <- t(as.matrix(vi1df))
+
+  # make the mesh, then rotate and transform if necssary
   mesh <- tmesh3d(mpt,mvi)
-  mesh <
+  rot <- getRot(cdf,cidx)
+  print(rot)
+  mesh <- rotate3d(mesh,matrix=rot)
+  trn <- getTrn(cdf,cidx)
+  mesh <- translate3d(mesh,trn[[1]],trn[[2]],trn[[3]])
+
+  # render it
+  shade3d(mesh,color = pdf$amb[pidx],alpha=pdf$amb.a[pidx])
   print(sprintf("%s  pts:%d vidx:%d",cname,length(mpt),length(mvi)))
-  shade3d(mesh,color = pdf$amb[pidx])
+
 }
+
+addAxes(50)

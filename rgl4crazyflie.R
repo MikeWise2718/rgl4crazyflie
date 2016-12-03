@@ -232,10 +232,17 @@ plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot
   #shade3d(part)
   shade3d(part,color = amb,specular=spc,emissive=ems,alpha = alf,shiny = shiny)
 
-  comp$vp <- part$vb
-  comp$vi <- part$it
+  comp$out_vp <- part$vb
+  comp$out_vi <- part$it
+  stats <- findBBox(comp$out_vp,compname)
+  #comp$out_vp <- translatePoints(comp$out_vp,-1*stats$cenv)
+  comp$out_sca <- c(1,1,1)
+  comp$out_rot <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
+  comp$out_trn <- stats$cenv
+  comp$out_trn <- c(0,0,0)
   return(comp)
 }
+
 
 addAxes <- function(len = 1) {
   u <- c(0,1)*len
@@ -312,8 +319,6 @@ readCompositionFromXml <- function(stldir,xfname) {
       trn <- 1000.0*as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
       cp$trn <- trn
       cp$id <- length(compList)+1
-      cp$ntrn <- c(0,0,0)
-      cp$nrot <- matrix(0,3,3)
       compList[[compname]] <- cp
     }
   }
@@ -363,19 +368,58 @@ dumpCompList <- function(compList) {
   }
 }
 
+findBBox <- function(ptlist,printword = "test",print = T) {
+  minx <- miny <- minz <- +9e99
+  maxx <- maxy <- maxz <- -9e99
+  nr <- length(ptlist)/4
+  v <- matrix(ptlist,nr,4)
+  for (i in 1:nr) {
+    minx <- min(minx,v[[i,1]])
+    maxx <- max(maxx,v[[i,1]])
+    miny <- min(miny,v[[i,2]])
+    maxy <- max(maxy,v[[i,2]])
+    minz <- min(minz,v[[i,3]])
+    maxz <- max(maxz,v[[i,3]])
+  }
+  stats <- list()
+  minv <- c(minx,miny,minz)
+  maxv <- c(maxx,maxy,maxz)
+  cenv <- (maxv+minv)/2
+  stats$minv <- minv
+  stats$maxv <- maxv
+  stats$cenv <- cenv
+  print(sprintf("%s bbox x: %.1f to %.1f    y: %.1f to %.1f    z: %.1f to %.1f",
+                  printword,minx,maxx,miny,maxy,minz,maxz))
+  return(stats)
+}
+
+translatePoints <- function(ptlist,trn) {
+  nr <- length(ptlist) / 4
+  v <- matrix(ptlist,nr,4)
+  for (i in 1:nr) {
+    v[i,1] <- v[i,1] + trn[1]
+    v[i,2] <- v[i,2] + trn[2]
+    v[i,3] <- v[i,3] + trn[3]
+  }
+  v <- as.numeric(v)
+  return(v)
+}
+
 
 writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compList) {
 
   # Components
   cdf <- NULL
   for (c in compList) {
-    v <- c$ntrn
-    m <- c$nrot
+    vs <- c$out_sca
+    vt <- c$out_trn
+    m <- c$out_rot
     c1df <- data.frame(id = c$id,compname = c$compname,partname = c$partname,
-                       trn.x = v[1],trn.y = v[2],trn.z = v[3],
+                       sca.x = vs[1],sca.y = vs[2],sca.z = vs[3],
+                       trn.x = vt[1],trn.y = vt[2],trn.z = vt[3],
                        rot.11 = m[1,1],rot.12 = m[1,2],rot.13 = m[1,3],
-                       rot.21 = m[1,1],rot.22 = m[1,2],rot.23 = m[1,3],
-                       rot.31 = m[1,1],rot.32 = m[1,2],rot.33 = m[1,3]
+                       rot.21 = m[2,1],rot.22 = m[2,2],rot.23 = m[2,3],
+                       rot.31 = m[3,1],rot.32 = m[3,2],rot.33 = m[3,3]
                        )
     cdf <- rbind(cdf,c1df)
   }
@@ -400,7 +444,7 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # Points
   ptdf <- NULL
   for (c in compList) {
-    pt1df <- as.data.frame(t(c$vp))
+    pt1df <- as.data.frame(t(c$out_vp))
     names(pt1df) <- c("x","y","z","w")
     pt1df$id <- c$id
     ptdf <- rbind(ptdf,pt1df)
@@ -411,7 +455,7 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # VertsIdx
   ptdf <- NULL
   for (c in compList) {
-    pt1df <- as.data.frame(t(c$vi))
+    pt1df <- as.data.frame(t(c$out_vi))
     names(pt1df) <- c("v1","v2","v3")
     pt1df$id <- c$id
     ptdf <- rbind(ptdf,pt1df)

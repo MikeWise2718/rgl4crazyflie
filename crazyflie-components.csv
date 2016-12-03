@@ -1,18 +1,18 @@
-"id","compname","partname","trn.x","trn.y","trn.z","rot.11","rot.12","rot.13","rot.21","rot.22","rot.23","rot.31","rot.32","rot.33"
-1,"7mm motor mount-4","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
-2,"7mm motor mount-5","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
-3,"7x15 motor-1","7x15 motor",0,0,0,0,0,0,0,0,0,0,0,0
-4,"7x15 motor-2","7x15 motor",0,0,0,0,0,0,0,0,0,0,0,0
-5,"7x15 motor-3","7x15 motor",0,0,0,0,0,0,0,0,0,0,0,0
-6,"7x15 motor-4","7x15 motor",0,0,0,0,0,0,0,0,0,0,0,0
-7,"propeller_ccw-1","propeller_ccw",0,0,0,0,0,0,0,0,0,0,0,0
-8,"propeller_ccw-2","propeller_ccw",0,0,0,0,0,0,0,0,0,0,0,0
-9,"propeller_cw-1","propeller_cw",0,0,0,0,0,0,0,0,0,0,0,0
-10,"propeller_cw-2","propeller_cw",0,0,0,0,0,0,0,0,0,0,0,0
-11,"7mm motor mount-3","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
-12,"header-2","header",0,0,0,0,0,0,0,0,0,0,0,0
-13,"battery holder board-1","battery holder board",0,0,0,0,0,0,0,0,0,0,0,0
-14,"header-1","header",0,0,0,0,0,0,0,0,0,0,0,0
-15,"pcb-1","pcb",0,0,0,0,0,0,0,0,0,0,0,0
-16,"7mm motor mount-1","7mm motor mount",0,0,0,0,0,0,0,0,0,0,0,0
-17,"battery bc-bl-01-a-1","battery bc-bl-01-a",0,0,0,0,0,0,0,0,0,0,0,0
+"id","compname","partname","sca.x","sca.y","sca.z","trn.x","trn.y","trn.z","rot.11","rot.12","rot.13","rot.21","rot.22","rot.23","rot.31","rot.32","rot.33"
+1,"7mm motor mount-4","7mm motor mount",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+2,"7mm motor mount-5","7mm motor mount",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+3,"7x15 motor-1","7x15 motor",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+4,"7x15 motor-2","7x15 motor",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+5,"7x15 motor-3","7x15 motor",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+6,"7x15 motor-4","7x15 motor",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+7,"propeller_ccw-1","propeller_ccw",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+8,"propeller_ccw-2","propeller_ccw",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+9,"propeller_cw-1","propeller_cw",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+10,"propeller_cw-2","propeller_cw",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+11,"7mm motor mount-3","7mm motor mount",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+12,"header-2","header",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+13,"battery holder board-1","battery holder board",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+14,"header-1","header",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+15,"pcb-1","pcb",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+16,"7mm motor mount-1","7mm motor mount",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
+17,"battery bc-bl-01-a-1","battery bc-bl-01-a",1,1,1,0,0,0,1,0,0,0,1,0,0,0,1
