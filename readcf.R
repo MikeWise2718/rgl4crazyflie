@@ -126,7 +126,8 @@ for (cidx in 1:ncomp) {
   mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
   # render it
-  print(sprintf("%25s cid:%2d  - cidx:%d fcidx:%d pidx:%2d pts:%d vidx:%d",cname,cid,cidx,fcidx,pidx,length(mpt),length(mvi)))
+  print(sprintf("%25s cid:%4d  fcid:%4d - cidx:%2d fcidx:%2d pidx:%2d pts:%5d vidx:%5d",
+               cname,cid,fcid,cidx,fcidx,pidx,length(mpt),length(mvi)))
   shade3d(mesh,color = pdf$amb[pidx],alpha = pdf$amb.a[pidx])
   addAxes(10,t=trn,r=rot) # show the local coordinate system
 

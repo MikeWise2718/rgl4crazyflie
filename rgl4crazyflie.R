@@ -319,7 +319,7 @@ readCompositionFromXml <- function(stldir,xfname) {
       # some STL brain damage no doubt
       trn <- 1000.0*as.numeric(str_split(xml_text(ntrn),"\\s")[[1]])
       cp$trn <- trn
-      cp$id <- length(compList)+1
+      cp$id <- 100*(length(compList)+1)
       compList[[compname]] <- cp
     }
   }
@@ -354,7 +354,7 @@ readMaterialsFromXml <- function(stldir,xfname) {
       print(sprintf("   spc - %.3f",prt$specular))
       print(sprintf("   emi - %.3f",prt$emissive))
       print(sprintf("   shn - %.3f",prt$shinyness))
-      prt$id <- length(partAttList)+1
+      prt$id <- 100*(length(partAttList)+1)
       partAttList[[partname]] <- prt
     }
   }
@@ -479,8 +479,10 @@ for (fname in stlfiles) {
 #  their transformations which position them, and their material properties
 # 
 compList <- readCompositionFromXml(stldir,"Crazyflie_assembly.xml")
+compList <- compList[order(sapply(compList,'[[',"compname"))]  # order them
+
 partAttList <- readMaterialsFromXml(stldir,"Crazyflie_assembly.xml")
-#dumpCompList(compList)
+partAttList <- partAttList[order(sapply(partAttList,'[[',"partname"))] # order them
 
 compList <- plotWholeThing(partAttList,partVertList,compList)
 
