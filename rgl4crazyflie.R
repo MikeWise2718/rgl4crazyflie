@@ -235,11 +235,12 @@ plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot
   comp$out_vp <- part$vb
   comp$out_vi <- part$it
   stats <- findBBox(comp$out_vp,compname)
-  #comp$out_vp <- translatePoints(comp$out_vp,-1*stats$cenv)
+  comp$out_vp <- translatePointsFromMatrix(comp$out_vp, -stats$cenv )
   comp$out_sca <- c(1,1,1)
   comp$out_rot <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
   comp$out_trn <- stats$cenv
-  comp$out_trn <- c(0,0,0)
+  stats <- findBBox(comp$out_vp,compname)
+  #comp$out_trn <- c(0,0,0)
   return(comp)
 }
 
@@ -368,18 +369,16 @@ dumpCompList <- function(compList) {
   }
 }
 
-findBBox <- function(ptlist,printword = "test",print = T) {
+findBBox <- function(ptmat,printword = "test",print = T) {
   minx <- miny <- minz <- +9e99
   maxx <- maxy <- maxz <- -9e99
-  nr <- length(ptlist)/4
-  v <- matrix(ptlist,nr,4)
-  for (i in 1:nr) {
-    minx <- min(minx,v[[i,1]])
-    maxx <- max(maxx,v[[i,1]])
-    miny <- min(miny,v[[i,2]])
-    maxy <- max(maxy,v[[i,2]])
-    minz <- min(minz,v[[i,3]])
-    maxz <- max(maxz,v[[i,3]])
+  for (i in 1:dim(ptmat)[2]) {
+    minx <- min(minx,ptmat[[1,i]])
+    maxx <- max(maxx,ptmat[[1,i]])
+    miny <- min(miny,ptmat[[2,i]])
+    maxy <- max(maxy,ptmat[[2,i]])
+    minz <- min(minz,ptmat[[3,i]])
+    maxz <- max(maxz,ptmat[[3,i]])
   }
   stats <- list()
   minv <- c(minx,miny,minz)
@@ -390,19 +389,18 @@ findBBox <- function(ptlist,printword = "test",print = T) {
   stats$cenv <- cenv
   print(sprintf("%s bbox x: %.1f to %.1f    y: %.1f to %.1f    z: %.1f to %.1f",
                   printword,minx,maxx,miny,maxy,minz,maxz))
+  print(sprintf("%s cenv %.1f %.1f %.1f",printword,cenv[1],cenv[2],cenv[3]))
   return(stats)
 }
 
-translatePoints <- function(ptlist,trn) {
-  nr <- length(ptlist) / 4
-  v <- matrix(ptlist,nr,4)
-  for (i in 1:nr) {
-    v[i,1] <- v[i,1] + trn[1]
-    v[i,2] <- v[i,2] + trn[2]
-    v[i,3] <- v[i,3] + trn[3]
+translatePointsFromMatrix <- function(ptmat,trn) {
+  print(sprintf("Translating trn %.1f %.1f %.1f",trn[1],trn[2],trn[3]))
+  for (i in 1:dim(ptmat)[2]) {
+    ptmat[1,i] <- ptmat[1,i] + trn[1]
+    ptmat[2,i] <- ptmat[2,i] + trn[2]
+    ptmat[3,i] <- ptmat[3,i] + trn[3]
   }
-  v <- as.numeric(v)
-  return(v)
+  return(ptmat)
 }
 
 
@@ -447,6 +445,8 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
     pt1df <- as.data.frame(t(c$out_vp))
     names(pt1df) <- c("x","y","z","w")
     pt1df$id <- c$id
+    print(colnames(pt1df))
+    print(sprintf("ptdf-ncol:%d    pt1df-ncol%d",ncol(ptdf),ncol(pt1df)))
     ptdf <- rbind(ptdf,pt1df)
   }
   fname <- sprintf("%s-points.csv",fnameroot)

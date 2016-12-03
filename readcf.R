@@ -39,17 +39,21 @@ r <- readMesh("crazyflie")
 
 open3d()
 
-addAxes <- function(len = 1) {
+addAxes <- function(len = 1,t=c(0,0,0),tit="") {
   u <- c(0,1) * len
   v <- c(0,0)
   w <- c(0,0)
-  lines3d(u,v,w,color = c("red"))
-  text3d(u,v,w,c("","X"),color = c("red"))
-  lines3d(w,u,v,color = c("green"))
-  text3d(w,u,v,c("","Y"),color = c("green"))
-  lines3d(v,w,u,color = c("blue"))
-  text3d(v,w,u,c("","Z"),color = c("blue"))
+  lines3d(u+t[1],v+t[2],w+t[3],          color = c("red"))
+  text3d( u+t[1],v+t[2],w+t[3],c("","X"),color = c("red"),cex=1)
+  lines3d(w+t[1],u+t[2],v+t[3],          color = c("green"))
+  text3d( w+t[1],u+t[2],v+t[3],c("","Y"),color = c("green"))
+  lines3d(v+t[1],w+t[2],u+t[3],          color = c("blue"))
+  text3d( v+t[1],w+t[2],u+t[3],c("","Z"),color = c("blue"))
+
 }
+
+
+
 
 cdf <- r$cdf
 pdf <- r$pdf
@@ -112,14 +116,14 @@ for (cidx in 1:ncomp) {
   # make the mesh, then rotate and transform if necssary
   mesh <- tmesh3d(mpt,mvi)
   rot <- getRot(cdf,cidx)
-  print(rot)
   mesh <- rotate3d(mesh,matrix=rot)
   trn <- getTrn(cdf,cidx)
-  mesh <- translate3d(mesh,trn[[1]],trn[[2]],trn[[3]])
+  mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
   # render it
-  shade3d(mesh,color = pdf$amb[pidx],alpha=pdf$amb.a[pidx])
   print(sprintf("%s  pts:%d vidx:%d",cname,length(mpt),length(mvi)))
+  shade3d(mesh,color = pdf$amb[pidx],alpha = pdf$amb.a[pidx])
+  addAxes(10,t=trn)
 
 }
 
