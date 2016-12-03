@@ -1,4 +1,3 @@
-
 library(rgl)
 library(stringr)
 library(xml2)
@@ -39,7 +38,7 @@ r <- readMesh("crazyflie")
 
 open3d()
 
-addAxes <- function(len = 1,t=c(0,0,0),tit="") {
+addAxes <- function(len = 1,t=c(0,0,0),r=NULL,tit="") {
   u <- c(0,1) * len
   v <- c(0,0)
   w <- c(0,0)
@@ -51,8 +50,6 @@ addAxes <- function(len = 1,t=c(0,0,0),tit="") {
   text3d( v+t[1],w+t[2],u+t[3],c("","Z"),color = c("blue"))
 
 }
-
-
 
 
 cdf <- r$cdf
@@ -96,12 +93,20 @@ getTrn <- function(cdf,cidx) {
   return(trn)
 }
 
+ctran <- c(1,1,3,3,3,3,7,7,9,9,1,12,13,14,15,1,17)
+
 for (cidx in 1:ncomp) {
   # setup
   cid <- cdf$id[cidx]
   cname <- cdf$compname[cidx]
   pname <- cdf$partname[cidx]
   pidx <- which(pdf$partname == pname)
+
+  # now find the first component that has the same partname as this component
+  # we are experimenting with changing out for parts
+
+  fcidx <- which(cdf$partname == pname)[[1]]
+  fcid <- cdf$id[fcidx]
 
   # get the points for this component
   pt1df <- ptdf[ptdf$id == cid,]
@@ -121,9 +126,9 @@ for (cidx in 1:ncomp) {
   mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
   # render it
-  print(sprintf("%s  pts:%d vidx:%d",cname,length(mpt),length(mvi)))
+  print(sprintf("%25s cid:%2d  - cidx:%d fcidx:%d pidx:%2d pts:%d vidx:%d",cname,cid,cidx,fcidx,pidx,length(mpt),length(mvi)))
   shade3d(mesh,color = pdf$amb[pidx],alpha = pdf$amb.a[pidx])
-  addAxes(10,t=trn)
+  addAxes(10,t=trn,r=rot) # show the local coordinate system
 
 }
 

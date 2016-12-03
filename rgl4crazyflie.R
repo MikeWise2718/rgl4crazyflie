@@ -442,11 +442,9 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # Points
   ptdf <- NULL
   for (c in compList) {
-    pt1df <- as.data.frame(t(c$out_vp))
+    pt1df <- as.data.frame(t(round(c$out_vp,5)))
     names(pt1df) <- c("x","y","z","w")
     pt1df$id <- c$id
-    print(colnames(pt1df))
-    print(sprintf("ptdf-ncol:%d    pt1df-ncol%d",ncol(ptdf),ncol(pt1df)))
     ptdf <- rbind(ptdf,pt1df)
   }
   fname <- sprintf("%s-points.csv",fnameroot)
