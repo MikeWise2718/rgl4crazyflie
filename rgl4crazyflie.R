@@ -237,7 +237,13 @@ plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot
   stats <- findBBox(comp$out_vp,compname)
   comp$out_vp <- translatePointsFromMatrix(comp$out_vp, -stats$cenv )
   comp$out_sca <- c(1,1,1)
-  comp$out_rot <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
+
+  # I don't know why this transformation of rot is necessary, but it is..
+  # m1 swaps Y&Z and then inverts all the axes
+  #
+  m1 <- matrix(c(-1,0,0,0,0,-1,0,-1,0),3,3)
+  comp$out_rot <- m1 %*% rot
+
   comp$out_trn <- stats$cenv
   stats <- findBBox(comp$out_vp,compname)
   #comp$out_trn <- c(0,0,0)
@@ -286,7 +292,8 @@ plotWholeThing <- function(partAttList,partVertList,compList) {
     #print(prta$ambient)
 
     vtl <- partVertList[[partname]]
-    newcp <- plotPartAsMesh(compname,partname,vtl,cp, trn,rot, amb,dif,spc,ems,alf,shn, hashemup=T)
+    newcp <- plotPartAsMesh(compname,partname,vtl,cp,trn,rot,amb,dif,spc,ems,alf,shn,hashemup = T)
+    newcp$partid <- prta$id
     compList[[compname]] <- newcp
   }
   addAxes(len = 50)
@@ -313,7 +320,7 @@ readCompositionFromXml <- function(stldir,xfname) {
     if (length(tform) > 0) {
       nrot <- xml_find_first(it, ".//*[local-name()='Rotation']")
       rot <- matrix(as.numeric(str_split(xml_text(nrot), "\\s")[[1]]),3,3)
-      cp$rot <- rot
+      cp$rot <- round(rot,4)
       ntrn <- xml_find_first(it,".//*[local-name()='Translation']")
       # no idea where this factor of 1000 comes from (mm -> meters?)
       # some STL brain damage no doubt
@@ -409,15 +416,15 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   # Components
   cdf <- NULL
   for (c in compList) {
-    vs <- c$out_sca
-    vt <- c$out_trn
-    m <- c$out_rot
-    c1df <- data.frame(id = c$id,compname = c$compname,partname = c$partname,
+    vs <- round(c$out_sca,5)
+    vt <- round(c$out_trn,5)
+    mr <- round(c$out_rot,5)
+    c1df <- data.frame(id = c$id,compname = c$compname,partid=c$partid,partname = c$partname,
                        sca.x = vs[1],sca.y = vs[2],sca.z = vs[3],
                        trn.x = vt[1],trn.y = vt[2],trn.z = vt[3],
-                       rot.11 = m[1,1],rot.12 = m[1,2],rot.13 = m[1,3],
-                       rot.21 = m[2,1],rot.22 = m[2,2],rot.23 = m[2,3],
-                       rot.31 = m[3,1],rot.32 = m[3,2],rot.33 = m[3,3]
+                       rot.11 = mr[1,1],rot.12 = mr[1,2],rot.13 = mr[1,3],
+                       rot.21 = mr[2,1],rot.22 = mr[2,2],rot.23 = mr[2,3],
+                       rot.31 = mr[3,1],rot.32 = mr[3,2],rot.33 = mr[3,3]
                        )
     cdf <- rbind(cdf,c1df)
   }
@@ -456,6 +463,7 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
     pt1df <- as.data.frame(t(c$out_vi))
     names(pt1df) <- c("v1","v2","v3")
     pt1df$id <- c$id
+    pt1df$partid <- c$id
     ptdf <- rbind(ptdf,pt1df)
   }
   fname <- sprintf("%s-vertidx.csv",fnameroot)

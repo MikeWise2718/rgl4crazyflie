@@ -13,6 +13,7 @@ readMesh <- function(fnameroot = "crazyflie") {
   # Components
   fname <- sprintf("%s-components.csv",fnameroot)
   cdf <- read.csv(fname)
+  cdf <- cdf[cdf$id>0,]
 
   # Parts
   fname <- sprintf("%s-parts.csv",fnameroot)
@@ -109,27 +110,33 @@ for (cidx in 1:ncomp) {
   fcid <- cdf$id[fcidx]
 
   # get the points for this component
-  pt1df <- ptdf[ptdf$id == cid,]
+  pt1df <- ptdf[ptdf$id == fcid,]
   pt1df$id <- NULL
   mpt <- t(as.matrix(pt1df))
 
   # get the indexs for this component
-  vi1df <- vidf[vidf$id == cid,]
+  vi1df <- vidf[vidf$id == fcid,]
   vi1df$id <- NULL
   mvi <- t(as.matrix(vi1df))
 
   # make the mesh, then rotate and transform if necssary
   mesh <- tmesh3d(mpt,mvi)
   rot <- getRot(cdf,cidx)
-  mesh <- rotate3d(mesh,matrix=rot)
   trn <- getTrn(cdf,cidx)
+  if (fcid == 1600) {
+    omesh <- mesh
+    omesh <- translate3d(omesh,trn[1],trn[2],trn[3])
+    mesh <- rotate3d(mesh,matrix=rot)
+  }
   mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
   # render it
   print(sprintf("%25s cid:%4d  fcid:%4d - cidx:%2d fcidx:%2d pidx:%2d pts:%5d vidx:%5d",
                cname,cid,fcid,cidx,fcidx,pidx,length(mpt),length(mvi)))
-  shade3d(mesh,color = pdf$amb[pidx],alpha = pdf$amb.a[pidx])
-  addAxes(10,t=trn,r=rot) # show the local coordinate system
+
+  clr <- pdf$amb[pidx]
+  shade3d(mesh,color = clr ,alpha = pdf$amb.a[pidx])
+  addAxes(10,t = trn,r = rot) # show the local coordinate system
 
 }
 
