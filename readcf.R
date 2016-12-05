@@ -102,40 +102,48 @@ for (cidx in 1:ncomp) {
   cname <- cdf$compname[cidx]
   pname <- cdf$partname[cidx]
   pidx <- which(pdf$partname == pname)
+  partid <- pdf$partid[pidx]
 
   # now find the first component that has the same partname as this component
   # we are experimenting with changing out for parts
 
-  fcidx <- which(cdf$partname == pname)[[1]]
-  fcid <- cdf$id[fcidx]
+  #fcidx <- which(cdf$partname == pname)[[1]]
+  #fcid <- cdf$id[fcidx]
 
   # get the points for this component
-  pt1df <- ptdf[ptdf$id == fcid,]
+  pt1df <- ptdf[ptdf$partid == partid,]
   pt1df$id <- NULL
+  pt1df$partid <- NULL
   mpt <- t(as.matrix(pt1df))
 
   # get the indexs for this component
-  vi1df <- vidf[vidf$id == fcid,]
+  vi1df <- vidf[vidf$partid == partid,]
   vi1df$id <- NULL
+  vi1df$partid <- NULL
   mvi <- t(as.matrix(vi1df))
 
   # make the mesh, then rotate and transform if necssary
   mesh <- tmesh3d(mpt,mvi)
   rot <- getRot(cdf,cidx)
   trn <- getTrn(cdf,cidx)
-  if (fcid == 1600) {
-    omesh <- mesh
-    omesh <- translate3d(omesh,trn[1],trn[2],trn[3])
-    mesh <- rotate3d(mesh,matrix=rot)
-  }
+#  if (fcid == 1600) {
+#    omesh <- mesh
+#    omesh <- translate3d(omesh,trn[1],trn[2],trn[3])
+#  }
+  mesh <- rotate3d(mesh,matrix = rot)
   mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
   # render it
-  print(sprintf("%25s cid:%4d  fcid:%4d - cidx:%2d fcidx:%2d pidx:%2d pts:%5d vidx:%5d",
-               cname,cid,fcid,cidx,fcidx,pidx,length(mpt),length(mvi)))
+  print(sprintf("%25s cid:%4d  - cidx:%2d pidx:%2d pts:%5d vidx:%5d",
+               cname,cid,cidx,pidx,length(mpt),length(mvi)))
 
   clr <- pdf$amb[pidx]
-  shade3d(mesh,color = clr ,alpha = pdf$amb.a[pidx])
+  # mounts and motor part numbers 
+  #   1 1600 500
+  #   2 1100 300
+  #   3 100 600
+  #   4 200 400
+  shade3d(mesh,color = clr,alpha = pdf$amb.a[pidx])
   addAxes(10,t = trn,r = rot) # show the local coordinate system
 
 }

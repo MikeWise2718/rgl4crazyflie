@@ -410,6 +410,21 @@ translatePointsFromMatrix <- function(ptmat,trn) {
   return(ptmat)
 }
 
+fixupname <- function(oname) {
+  name <- oname
+  name <- gsub("motor mount-1","motor mount-1",name)
+  name <- gsub("motor mount-3","motor mount-2",name)
+  name <- gsub("motor mount-4","motor mount-3",name)
+  name <- gsub("motor mount-5","motor mount-4",name)
+
+  name <- gsub("motor-1","motor---2",name)
+  name <- gsub("motor-3","motor---1",name)
+  name <- gsub("motor-2","motor---4",name)
+  name <- gsub("motor-4","motor---3",name)
+  name <- gsub("---","-",name)
+
+  return(name)
+}
 
 writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compList) {
 
@@ -419,7 +434,11 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
     vs <- round(c$out_sca,5)
     vt <- round(c$out_trn,5)
     mr <- round(c$out_rot,5)
-    c1df <- data.frame(id = c$id,compname = c$compname,partid=c$partid,partname = c$partname,
+    if (c$id == 1500) { # pcb not behaving like the rest. No idea why.
+      mr <- matrix(c(1,0,0, 0,1,0, 0,0,1),3,3)
+    }
+    fixcompname <- fixupname(c$compname)
+    c1df <- data.frame(id = c$id,compname = fixcompname,partid=c$partid,partname = c$partname,
                        sca.x = vs[1],sca.y = vs[2],sca.z = vs[3],
                        trn.x = vt[1],trn.y = vt[2],trn.z = vt[3],
                        rot.11 = mr[1,1],rot.12 = mr[1,2],rot.13 = mr[1,3],
@@ -428,13 +447,14 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
                        )
     cdf <- rbind(cdf,c1df)
   }
+  cdf <- cdf[order(as.character(cdf$compname)),]
   fname <- sprintf("%s-components.csv",fnameroot)
   write.csv(cdf,fname,row.names = F)
 
   # Parts
   pdf <- NULL
   for (p in partAttList) {
-    p1df <- data.frame(id = p$id,partname=p$partname,
+    p1df <- data.frame(partid = p$id,partname=p$partname,
       amb.r = p$ambient[[1]],amb.g = p$ambient[[2]],amb.b = p$ambient[[3]],amb.a = p$ambient[[4]],
       dif.r = p$diffuse[[1]],dif.g = p$diffuse[[2]],dif.b = p$diffuse[[3]],dif.a = p$diffuse[[4]],
       spc.r = p$specular[[1]],spc.g = p$specular[[2]],spc.b = p$specular[[3]],spc.a = p$specular[[4]],
@@ -451,8 +471,14 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   for (c in compList) {
     pt1df <- as.data.frame(t(round(c$out_vp,5)))
     names(pt1df) <- c("x","y","z","w")
-    pt1df$id <- c$id
-    ptdf <- rbind(ptdf,pt1df)
+    pt1df$partid <- c$partid
+
+    # only interested in writing the first component for every part
+    fcidx <- which(cdf$partname == c$partname)[[1]]
+    fcid <- cdf$id[fcidx]
+    if (fcid == c$id) { 
+      ptdf <- rbind(ptdf,pt1df)
+    }
   }
   fname <- sprintf("%s-points.csv",fnameroot)
   write.csv(ptdf,fname,row.names = F)
@@ -462,9 +488,15 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
   for (c in compList) {
     pt1df <- as.data.frame(t(c$out_vi))
     names(pt1df) <- c("v1","v2","v3")
-    pt1df$id <- c$id
-    pt1df$partid <- c$id
-    ptdf <- rbind(ptdf,pt1df)
+    #pt1df$id <- c$id
+    pt1df$partid <- c$partid
+
+    # only write out the first ones
+    fcidx <- which(cdf$partname == c$partname)[[1]]
+    fcid <- cdf$id[fcidx]
+    if (fcid == c$id) {
+      ptdf <- rbind(ptdf,pt1df)
+    }
   }
   fname <- sprintf("%s-vertidx.csv",fnameroot)
   write.csv(ptdf,fname,row.names = F)
