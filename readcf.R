@@ -93,8 +93,10 @@ getTrn <- function(cdf,cidx) {
   trn <- c(cdf$trn.x[cidx],cdf$trn.y[cidx],cdf$trn.z[cidx])
   return(trn)
 }
-
-ctran <- c(1,1,3,3,3,3,7,7,9,9,1,12,13,14,15,1,17)
+getSca <- function(cdf,cidx) {
+  sca <- c(cdf$sca.x[cidx],cdf$sca.y[cidx],cdf$sca.z[cidx])
+  return(sca)
+}
 
 for (cidx in 1:ncomp) {
   # setup
@@ -107,29 +109,23 @@ for (cidx in 1:ncomp) {
   # now find the first component that has the same partname as this component
   # we are experimenting with changing out for parts
 
-  #fcidx <- which(cdf$partname == pname)[[1]]
-  #fcid <- cdf$id[fcidx]
-
   # get the points for this component
   pt1df <- ptdf[ptdf$partid == partid,]
-  pt1df$id <- NULL
   pt1df$partid <- NULL
   mpt <- t(as.matrix(pt1df))
 
   # get the indexs for this component
   vi1df <- vidf[vidf$partid == partid,]
-  vi1df$id <- NULL
   vi1df$partid <- NULL
   mvi <- t(as.matrix(vi1df))
 
   # make the mesh, then rotate and transform if necssary
   mesh <- tmesh3d(mpt,mvi)
+  sca <- getSca(cdf,cidx)
   rot <- getRot(cdf,cidx)
   trn <- getTrn(cdf,cidx)
-#  if (fcid == 1600) {
-#    omesh <- mesh
-#    omesh <- translate3d(omesh,trn[1],trn[2],trn[3])
-#  }
+
+  mesh <- scale3d(mesh,x=sca[1],y=sca[2],z=sca[3] )
   mesh <- rotate3d(mesh,matrix = rot)
   mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 

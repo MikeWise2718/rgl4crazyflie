@@ -426,7 +426,7 @@ fixupname <- function(oname) {
   return(name)
 }
 
-writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compList) {
+writeOutFiles <- function(fnameroot = "crazyflie",partAttList,partVertList,compList) {
 
   # Components
   cdf <- NULL
@@ -434,11 +434,19 @@ writeOutFiles <- function(fnameroot="crazyflie",partAttList,partVertList,compLis
     vs <- round(c$out_sca,5)
     vt <- round(c$out_trn,5)
     mr <- round(c$out_rot,5)
-    if (c$id == 1500) { # pcb not behaving like the rest. No idea why.
-      mr <- matrix(c(1,0,0, 0,1,0, 0,0,1),3,3)
+    if (c$id == 1500) {
+      # pcb not behaving like the rest. No idea why.
+      mr <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
+    }
+    if (str_detect(c$compname,"propeller")) { 
+      layers <- "cf//base"
+    } else {
+      layers <- "cf//staticprop"
     }
     fixcompname <- fixupname(c$compname)
-    c1df <- data.frame(id = c$id,compname = fixcompname,partid=c$partid,partname = c$partname,
+    c1df <- data.frame(id = c$id,compname = fixcompname,
+                       partid = c$partid,partname = c$partname,
+                       layers=layers,
                        sca.x = vs[1],sca.y = vs[2],sca.z = vs[3],
                        trn.x = vt[1],trn.y = vt[2],trn.z = vt[3],
                        rot.11 = mr[1,1],rot.12 = mr[1,2],rot.13 = mr[1,3],
