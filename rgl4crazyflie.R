@@ -463,9 +463,19 @@ writeOutCzfFiles <- function(fnameroot = "crazyflie",partAttList,partVertList,co
       mr <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
     }
     if (str_detect(c$compname,"propeller")) { 
-      layers <- "cf//base"
-    } else {
       layers <- "cf//staticprop"
+    } else if (str_detect(c$compname,"motor mount")) {
+      layers <- "cf//base//momount"
+    } else if (str_detect(c$compname,"motor")) {
+      layers <- "cf//base//motor"
+    } else if (str_detect(c$compname,"pcb")) {
+      layers <- "cf//base//pcb"
+    } else if (str_detect(c$compname,"battery")) {
+      layers <- "cf//base//battery"
+    } else if (str_detect(c$compname,"header")) {
+      layers <- "cf//base//header"
+    } else  {
+     layers <- "cf//base"
     }
     options=""
     fixcompname <- fixupname(c$compname)

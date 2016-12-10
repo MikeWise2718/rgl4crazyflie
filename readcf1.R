@@ -21,9 +21,10 @@ rgbToStringColor <- function(rvek,gvek,bvek) {
   rgb <- sapply(l,colVekToStringColor)
 }
 
-readMesh <- function(fnameroot = "crazyflie") {
+readMesh <- function(cfdir="./",cfnameroot = "crazyflie",quiet=T) {
 
   # Components
+  fnameroot <- sprintf("%s%s",cfdir,cfnameroot)
   fname <- sprintf("%s-components.csv",fnameroot)
   cdf <- read.csv(fname)
   cdf <- cdf[cdf$id > 0,]
@@ -48,6 +49,15 @@ readMesh <- function(fnameroot = "crazyflie") {
   # VertsIdx
   fname <- sprintf("%s-vertidx.csv",fnameroot)
   vidf <- read.csv(fname)
+
+  if (!quiet) {
+    np <- nrow(pdf)
+    nc <- nrow(cdf)
+    npt <- nrow(ptdf)
+    nvi <- nrow(vidf)
+    print(sprintf("read from %s  %d parts   %d components   %d points   %d verts",
+                   fnameroot,np,nc,npt,nvi))
+  }
 
   rv <- list()
   rv$cdf <- cdf
@@ -105,7 +115,7 @@ addAxes <- function(len = 1,s = NULL,r = NULL,t = NULL,tit = "",charexp = 1) {
 }
 
 
-plotMesh <- function(obj) {
+plotMesh <- function(obj,exclude=NULL,include=NULL,lax=F,quiet=T,wireframe=F) {
   cdf <- obj$cdf
   pdf <- obj$pdf
   ptdf <- obj$ptdf
@@ -134,7 +144,7 @@ plotMesh <- function(obj) {
     # make the mesh, then rotate and transform if necssary
     mesh <- tmesh3d(mpt,mvi)
 
-    sca <- cdf$sca[[cidx]]
+    sca <- cdf$sca[[cidx]]  # double brackets because these are lists
     rot <- cdf$rot[[cidx]]
     trn <- cdf$trn[[cidx]]
 
@@ -143,23 +153,38 @@ plotMesh <- function(obj) {
     mesh <- translate3d(mesh,trn[1],trn[2],trn[3])
 
     # render it
-    print(sprintf("%25s cid:%4d  - cidx:%2d pidx:%2d pts:%5d vidx:%5d",
-               cname,cid,cidx,pidx,length(mpt),length(mvi)))
+    if (!quiet) {
+      print(sprintf("%25s cid:%4d  - cidx:%2d pidx:%2d pts:%5d vidx:%5d",
+                            cname,cid,cidx,pidx,length(mpt),length(mvi)))
+    }
 
     clr <- pdf$amb[pidx]
-    # mounts and motor part id numbers 
-    #   1 1600 500
-    #   2 1100 300
-    #   3 100 600
-    #   4 200 400
-    shade3d(mesh,color = clr,alpha = pdf$amb.a[pidx])
-    addAxes(10,t = trn,r = rot) # show the local coordinate system
+    excludeit <- F
+    if (!is.null(exclude)) {
+      excludeit <- grepl(exclude,cdf$layers[cidx])
+      if (excludeit) {
+        if (!is.null(include)) {
+          excludeit <- !grepl(include,cdf$layers[cidx])
+        }
+      }
+    }
+    if (!excludeit) {
+      if (wireframe) {
+        wire3d(mesh,color = clr,alpha = pdf$amb.a[pidx])
+      } else {
+        shade3d(mesh,color = clr,alpha = pdf$amb.a[pidx])
+      }
+      if (lax) {
+        addAxes(10,t = trn,r = rot) # show the local coordinate system
+      }
+    }
   }
 }
 
 
 
 open3d()
-robv <- readMesh("crazyflie")
-plotMesh(robv)
+cfdir <- "./"
+robv <- readMesh(cfdir,"crazyflie",quiet=F)
+plotMesh(robv,exclude="cf",include="cf",lax=T,quiet=F,wireframe=T)
 addAxes(50)
