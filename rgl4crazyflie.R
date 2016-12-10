@@ -16,38 +16,39 @@ library(hash)
 #  
 
 
-appendListAsSubEl <- function(vlist,v) {
-  # Append a list to a list as a sub-element 
-  # i.e. do not merge the lists (thus losing structure)
-  # and retain the top list's attributes 
-  if (!is.null(v)) {
-    vlist[[length(vlist) + 1]] <- v
-    # Note, if we use the faster method below, we loose the attributes of vlist!
-    # Bad, bad, bad...
-    # vlist <- c(vlist,v)
-  }
-  return(vlist)
-}
+readCzfVertsFromStl <- function(stldir,stlfname,vertPartList) {
 
-extractVert <- function(line) {
-  rv <- c(0,0,0)
-  sar <- str_split(line,"[\\s]")[[1]] # only one element in line
-  n <- length(sar)
-  if (n >= 3) {
-    rv <- c(as.numeric(sar[[n-2]]),as.numeric(sar[[n-1]]),as.numeric(sar[[n]]))
+  appendListAsSubEl <- function(vlist,v) {
+    # Append a list to a list as a sub-element 
+    # i.e. do not merge the lists (thus losing structure)
+    # and retain the top list's attributes 
+    if (!is.null(v)) {
+      vlist[[length(vlist) + 1]] <- v
+      # Note, if we use the faster method below, we loose the attributes of vlist!
+      # Bad, bad, bad...
+      # vlist <- c(vlist,v)
+    }
+    return(vlist)
   }
-  return(rv)
-}
 
-readVertsFromStl <- function(stldir, stlfname,vertPartList) {
+  extractVert <- function(line) {
+    rv <- c(0,0,0)
+    sar <- str_split(line,"[\\s]")[[1]] # only one element in line
+    n <- length(sar)
+    if (n >= 3) {
+      rv <- c(as.numeric(sar[[n - 2]]),as.numeric(sar[[n - 1]]),as.numeric(sar[[n]]))
+    }
+    return(rv)
+  }
+
   starttime <- Sys.time()
-  if (!is.null(stldir) & stldir!="") {
-    stlfname <- sprintf("%s/%s", stldir, stlfname)
+  if (!is.null(stldir) & stldir != "") {
+    stlfname <- sprintf("%s/%s",stldir,stlfname)
   }
-  lines <- readLines(stlfname, warn = F)
+  lines <- readLines(stlfname,warn = F)
   nlines0 <- length(lines)
   if (nlines0 < 6) {
-    print(sprintf("File too short:%d", length(nlines0)))
+    print(sprintf("File too short:%d",length(nlines0)))
     return(NULL)
   }
   print(sprintf("Read %d lines from %s",nlines0,stlfname))
@@ -64,19 +65,19 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
   lines <- lines[!str_detect(lines,"outer loop")]
   lines <- lines[!str_detect(lines,"endloop")]
   lines <- lines[!str_detect(lines,"endfacet")]
-  lines <- lines[!str_detect(lines, "endsolid")]
-  print(sprintf("Stripped out %d irrelevant lines", nlines0-length(lines)))
+  lines <- lines[!str_detect(lines,"endsolid")]
+  print(sprintf("Stripped out %d irrelevant lines",nlines0 - length(lines)))
 
   # now loop over what is left and accumulate the facet vector
   facetvek <- list()
   for (line in lines) {
-    if (str_detect(line, "facet")) {
+    if (str_detect(line,"facet")) {
       if (length(facetvek) == 4) {
         vertPtList <- appendListAsSubEl(vertPtList,facetvek)
       }
       facetvek <- list()
       facetvek <- appendListAsSubEl(facetvek,extractVert(line))
-    } else if (str_detect(line, "vertex")) {
+    } else if (str_detect(line,"vertex")) {
       facetvek <- appendListAsSubEl(facetvek,extractVert(line))
     } else {
       print(sprintf("opps unknown linetype:%s",line))
@@ -87,8 +88,8 @@ readVertsFromStl <- function(stldir, stlfname,vertPartList) {
   vertTopList$vertPtList <- vertPtList
   vertTopList$partname <- partname
   vertPartList[[partname]] <- vertTopList
-  elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
-  print(sprintf("Extracted %d vertices in %.1f secs for part '%s'", length(vertPtList),elap,partname))
+  elap <- as.numeric((Sys.time() - starttime)[1],units = "secs")
+  print(sprintf("Extracted %d vertices in %.1f secs for part '%s'",length(vertPtList),elap,partname))
   return(vertPartList)
 }
 
@@ -100,24 +101,20 @@ nvtot <- 0
 addVertHashed <- function(mList,v,n = NULL) {
   ni <- length(mList$idxList)
   np <- length(mList$pntList)
-  vkey <- paste0(sprintf("%e",v),collapse=",")
+  vkey <- paste0(sprintf("%e",v),collapse = ",")
   if (has.key(vkey,vhashtab)) {
     vval <- vhashtab[[vkey]]
     #print(sprintf("np:%d ni:%d vkey:%s nval:%d",np,ni,vkey,nval))
     mList$idxList <- c(mList$idxList,vval$vnum)
-    if (!is.null(n)) {
-      vval$norm <- vval$norm + n
-    }
-    nvsaved <<- nvsaved+1
+    nvsaved <<- nvsaved + 1
   } else {
     vnum <- (np + 3) / 3
     vval <- list()
     vval$vnum <- vnum
-    if (!is.null(n)) vval$norm <- n
     vhashtab[vkey] <- vval
     mList$pntList <- c(mList$pntList,v[1],v[2],v[3])
     mList$idxList <- c(mList$idxList,vnum)
-    nvtot <<- nvtot+1
+    nvtot <<- nvtot + 1
   }
   return(mList)
 }
@@ -126,110 +123,179 @@ addVert <- function(mList,v,n = NULL) {
   # no hashing
   ni <- length(mList$idxList)
   np <- length(mList$pntList)
-  mList$pntList <- c(mList$pntList, v[1],v[2],v[3])
-  mList$idxList <- c(mList$idxList, ni+1)
-  nvtot <<- nvtot+1
+  mList$pntList <- c(mList$pntList,v[1],v[2],v[3])
+  mList$idxList <- c(mList$idxList,ni + 1)
+  nvtot <<- nvtot + 1
   return(mList)
 }
 
-addTri <- function(mList,v1,v2,v3,norm,hashemup=T) {
+addTri <- function(mList,v1,v2,v3,hashemup = T) {
   if (hashemup) {
-    mList <- addVertHashed(mList,v1,norm)
-    mList <- addVertHashed(mList,v2,norm)
-    mList <- addVertHashed(mList,v3,norm)
+    mList <- addVertHashed(mList,v1)
+    mList <- addVertHashed(mList,v2)
+    mList <- addVertHashed(mList,v3)
   } else {
-    mList <- addVert(mList,v1,norm)
-    mList <- addVert(mList,v2,norm)
-    mList <- addVert(mList,v3,norm)
+    mList <- addVert(mList,v1)
+    mList <- addVert(mList,v2)
+    mList <- addVert(mList,v3)
   }
   return(mList)
 }
 
 normalize <- function(n) {
-  vlen <- sqrt(n[[1]]^2 + n[[2]]^2 + n[[3]]^2)
-  if (vlen>0) {
-    n <- n/vlen
+  vlen <- sqrt(n[[1]] ^ 2 + n[[2]] ^ 2 + n[[3]] ^ 2)
+  if (vlen > 0) {
+    n <- n / vlen
   }
   return(n)
 }
 
-plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot = NULL,
-                           amb = "silver",dif=NULL,spc=NULL,ems=NULL,alf = 1,shiny = 50,donorms = F,hashemup = T) {
+
+findBBox <- function(ptmat,printword = "test",print = T) {
+  minx <- miny <- minz <- +9e99
+  maxx <- maxy <- maxz <- -9e99
+  for (i in 1:dim(ptmat)[2]) {
+    minx <- min(minx,ptmat[[1,i]])
+    maxx <- max(maxx,ptmat[[1,i]])
+    miny <- min(miny,ptmat[[2,i]])
+    maxy <- max(maxy,ptmat[[2,i]])
+    minz <- min(minz,ptmat[[3,i]])
+    maxz <- max(maxz,ptmat[[3,i]])
+  }
+  stats <- list()
+  minv <- c(minx,miny,minz)
+  maxv <- c(maxx,maxy,maxz)
+  cenv <- (maxv + minv) / 2
+  stats$minv <- minv
+  stats$maxv <- maxv
+  stats$cenv <- cenv
+  print(sprintf("%s bbox x: %.1f to %.1f    y: %.1f to %.1f    z: %.1f to %.1f",
+                  printword,minx,maxx,miny,maxy,minz,maxz))
+  print(sprintf("%s cenv %.1f %.1f %.1f",printword,cenv[1],cenv[2],cenv[3]))
+  return(stats)
+}
+
+translatePointsFromMatrix <- function(ptmat,trn) {
+  print(sprintf("Translating trn %.1f %.1f %.1f",trn[1],trn[2],trn[3]))
+  for (i in 1:dim(ptmat)[2]) {
+    ptmat[1,i] <- ptmat[1,i] + trn[1]
+    ptmat[2,i] <- ptmat[2,i] + trn[2]
+    ptmat[3,i] <- ptmat[3,i] + trn[3]
+  }
+  return(ptmat)
+}
+
+
+combinePointsIntoMesh <- function(compname = "some_comp",
+                                  vertPtList,ix = 1,iy = 2,iz = 3,hashemup = T,
+                                  trn = c(0,0,0),center = T,
+                                  prerot = matrix(c(1,0,0,0,1,0,0,0,1),3,3),
+                                  postrot = matrix(c(1,0,0,0,1,0,0,0,1),3,3)) {
+  #  Takes a list of 3D vectors that representing a triangle
+  # v1,v2,v3 being the points where the vertices are located
+  # the ix,iy,iz allow the x,y and z positions to be exchanged
+  # if hashemup is T, then identiacl points will be merged in the resulting
+  # vertex list
+  # Returns a list of indexs (1 based), and a list of points
+  # no check or correction for backface/frontface consistentcy
+  # if center=true, then the points are centered on the middle of the
+  # bounding box and a translation vector is returned
+  #
   vhashtab <<- hash()
-  vertPtList <- vertTopList$vertPtList
   mList <- list()
   mList$idxList <- list()
   mList$pntList <- list()
   mList$nrmList <- list()
   normval <- NULL
+  ineed <- max(ix,iy,iz)
   for (v in vertPtList) {
-    if (length(v) == 4) {
-      if (donorms) normval <- v[[1]]
-      mList <- addTri(mList,v[[2]],v[[3]],v[[4]],normval,hashemup=hashemup) 
+    if (length(v) >= ineed) {
+      mList <- addTri(mList,v[[ix]],v[[iy]],v[[iz]],hashemup = hashemup)
     }
   }
   vidx <- unlist(mList$idxList)
   vpnt <- unlist(mList$pntList)
-  nv <- length(vertPtList)
+
+  vpntm <- t(matrix(vpnt,3,length(vpnt) / 3))
+  vpntm <- vpntm %*% prerot
+  vpntm[,1] <- vpntm[,1] + trn[1]
+  vpntm[,2] <- vpntm[,2] + trn[2]
+  vpntm[,3] <- vpntm[,3] + trn[3]
+  vpntm <- vpntm %*% postrot
+
+  cen <- c(0,0,0)
+  if (center) {
+    stats <- findBBox(comp$out_vp,compname)
+    cen <- stats$cenv
+    vpntm[,1] <- vpntm[,1] - cen[1]
+    vpntm[,2] <- vpntm[,2] - cen[2]
+    vpntm[,3] <- vpntm[,3] - cen[3]
+  }
+
+  rv <- list()
+  rv$compname <- compname
+  rv$vidx <- vidx
+  rv$vpnt <- as.numeric(t(vpntm))
+  rv$cen <- cen
+  return(rv)
+}
+
+calcMeshCog <- function(part) {
+  vb <- part$vb
+  nvb <- length(vb)
+  bsq <- (1:(nvb / 4) - 1) * 4
+  xc <- vb[bsq + 1]
+  yc <- vb[bsq + 2]
+  zc <- vb[bsq + 3]
+  wc <- vb[bsq + 4]
+  cx <- mean(min(xc) + max(xc))
+  cy <- mean(min(yc) + max(yc))
+  cz <- mean(min(zc) + max(zc))
+  cw <- mean(min(wc) + max(wc))
+  tx <- max(xc) - min(xc)
+  ty <- max(yc) - min(yc)
+  tz <- max(zc) - min(zc)
+  tw <- max(wc) - min(wc)
+
+  print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw,tx,ty,tz,tw))
+}
+
+plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot = NULL,
+                           amb = "silver",dif = NULL,spc = NULL,ems = NULL,alf = 1,shiny = 50,hashemup = T,quiet = F) {
+
+  # we want it to be centerd on the center of the pcb (which id probably a bit under its cog, but close enough..
+  pcbcen <- -0.5 * c(54.09200,71.18820,75.60720)
+  reorient <- matrix(c(-1,0,0,0,1,0,0,0,-1),3,3)
+  ident <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
+
+  rv <- combinePointsIntoMesh(compname,vertTopList$vertPtList,2,3,4,prerot=rot,trn=(trn+pcbcen),postrot=ident,center=F)
+
+  nv <- length(vertTopList$vertPtList)
+  vidx <- rv$vidx
+  vpnt <- rv$vpnt
   ni <- length(vidx)
   np <- length(vpnt)
-
-  # Not sure I can make donorms work right
-  # giving up for now - 2016.12.1
-  #
-  if (donorms) {
-    nn <- np / 3
-    for (i in 1:nn) {
-      bidx <- (i-1)*3
-      v1 <- vpnt[[bidx+1]]
-      v2 <- vpnt[[bidx+2]]
-      v3 <- vpnt[[bidx+3]]
-      v <- c(v1,v2,v3)
-      vkey <- paste0(sprintf("%e",v),collapse = ",")
-      vval <- vhashtab[[vkey]]
-      mList$nrmList <- c(mList$nrmList,normalize(vval$norm))
-    }
-    vnrm <- unlist(mList$nrmList)
-  }
-
   nvsv <- 3*nv - np
-  print(sprintf("   tmesh3d - nv:%d np:%d ni:%d maxi:%d mini:%d - vsaved:%d",nv,np,ni,max(vidx),min(vidx),nvsv))
-  if (donorms) {
-    part <- tmesh3d(vpnt,vidx,homogeneous=F, normals=vnrm)
-  } else {
-    part <- tmesh3d(vpnt,vidx,homogeneous=F)
+
+  if (!quiet) {
+    print(sprintf("   tmesh3d - nv:%d np:%d ni:%d maxi:%d mini:%d - vsaved:%d",nv,np,ni,max(vidx),min(vidx),nvsv))
   }
-  part <- translate3d(rotate3d(part,matrix = rot),trn[[1]],trn[[2]],trn[[3]])
+
+  part <- tmesh3d(vpnt,vidx,homogeneous = F)
+  #part <- translate3d(rotate3d(part,matrix = rot),trn[[1]],trn[[2]],trn[[3]])
 
   # Center and orient the drone - determined these from the data
   # Drone was upside down and facing the wrong way
   # making the center to be the center of the pcb board
   #
-  pcbcen <- -0.5*c(54.09200, 71.18820, 75.60720)
-  part <- translate3d(part,pcbcen[[1]],pcbcen[[2]],pcbcen[[3]])
-  part <- rotate3d(part,pi,0,1,0 ) # rotate 180 around the y-axis
-  calccog <- T
-  if (calccog) {
-    vb <- part$vb
-    nvb <- length(vb)
-    bsq <- (1:(nvb/4) - 1)*4
-    xc <- vb[bsq + 1]
-    yc <- vb[bsq + 2]
-    zc <- vb[bsq + 3]
-    wc <- vb[bsq + 4]
-    cx <- mean(min(xc) + max(xc))
-    cy <- mean(min(yc) + max(yc))
-    cz <- mean(min(zc) + max(zc))
-    cw <- mean(min(wc) + max(wc))
-    tx <- max(xc) - min(xc)
-    ty <- max(yc) - min(yc)
-    tz <- max(zc) - min(zc)
-    tw <- max(wc) - min(wc)
+  #pcbcen <- -0.5*c(54.09200, 71.18820, 75.60720)
+  #part <- translate3d(part,pcbcen[[1]],pcbcen[[2]],pcbcen[[3]])
+  part <- rotate3d(part,pi,0,1,0) # rotate 180 around the y-axis
 
-    print(sprintf("   cog:%.5f %.5f %.5f %.5f thickness: %.5f %.5f %.5f %.5f",cx,cy,cz,cw,tx,ty,tz,tw))
+  if (!quiet) {
+    calcMeshCog(part)
   }
-  #rgl.material(color=amb,alpha=alf,specular=spc,shininess=shiny)
-  #shade3d(part)
+
   shade3d(part,color = amb,specular=spc,emissive=ems,alpha = alf,shiny = shiny)
 
   comp$out_vp <- part$vb
@@ -238,11 +304,13 @@ plotPartAsMesh <- function(compname,partname,vertTopList,comp,trn = c(0,0,0),rot
   comp$out_vp <- translatePointsFromMatrix(comp$out_vp, -stats$cenv )
   comp$out_sca <- c(1,1,1)
 
-  # I don't know why this transformation of rot is necessary, but it is..
+  # I don't know why this transformation of rot is necessary, but it is...
   # m1 swaps Y&Z and then inverts all the axes
   #
   m1 <- matrix(c(-1,0,0,0,0,-1,0,-1,0),3,3)
   comp$out_rot <- m1 %*% rot
+  #comp$out_rot <- matrix(c(1,0,0,0,1,0,0,0,1),3,3)
+  #comp$out_rot <- rot
 
   comp$out_trn <- stats$cenv
   stats <- findBBox(comp$out_vp,compname)
@@ -278,8 +346,6 @@ plotWholeThing <- function(partAttList,partVertList,compList) {
     print(sprintf("Comp:%s part:%s",compname,partname))
     rot <- cp$rot
     trn <- cp$trn
-
-
 
     prta <- partAttList[[partname]]
 
@@ -368,48 +434,6 @@ readMaterialsFromXml <- function(stldir,xfname) {
   return(partAttList)
 }
 
-dumpCompList <- function(compList) {
-  for (cp in compList) {
-    print(sprintf("%s - %s",cp$compname,cp$partname))
-    print(cp$rot)
-    print(cp$trn)
-  }
-}
-
-findBBox <- function(ptmat,printword = "test",print = T) {
-  minx <- miny <- minz <- +9e99
-  maxx <- maxy <- maxz <- -9e99
-  for (i in 1:dim(ptmat)[2]) {
-    minx <- min(minx,ptmat[[1,i]])
-    maxx <- max(maxx,ptmat[[1,i]])
-    miny <- min(miny,ptmat[[2,i]])
-    maxy <- max(maxy,ptmat[[2,i]])
-    minz <- min(minz,ptmat[[3,i]])
-    maxz <- max(maxz,ptmat[[3,i]])
-  }
-  stats <- list()
-  minv <- c(minx,miny,minz)
-  maxv <- c(maxx,maxy,maxz)
-  cenv <- (maxv+minv)/2
-  stats$minv <- minv
-  stats$maxv <- maxv
-  stats$cenv <- cenv
-  print(sprintf("%s bbox x: %.1f to %.1f    y: %.1f to %.1f    z: %.1f to %.1f",
-                  printword,minx,maxx,miny,maxy,minz,maxz))
-  print(sprintf("%s cenv %.1f %.1f %.1f",printword,cenv[1],cenv[2],cenv[3]))
-  return(stats)
-}
-
-translatePointsFromMatrix <- function(ptmat,trn) {
-  print(sprintf("Translating trn %.1f %.1f %.1f",trn[1],trn[2],trn[3]))
-  for (i in 1:dim(ptmat)[2]) {
-    ptmat[1,i] <- ptmat[1,i] + trn[1]
-    ptmat[2,i] <- ptmat[2,i] + trn[2]
-    ptmat[3,i] <- ptmat[3,i] + trn[3]
-  }
-  return(ptmat)
-}
-
 fixupname <- function(oname) {
   name <- oname
   name <- gsub("motor mount-1","motor mount-1",name)
@@ -426,7 +450,7 @@ fixupname <- function(oname) {
   return(name)
 }
 
-writeOutFiles <- function(fnameroot = "crazyflie",partAttList,partVertList,compList) {
+writeOutCzfFiles <- function(fnameroot = "crazyflie",partAttList,partVertList,compList) {
 
   # Components
   cdf <- NULL
@@ -443,10 +467,12 @@ writeOutFiles <- function(fnameroot = "crazyflie",partAttList,partVertList,compL
     } else {
       layers <- "cf//staticprop"
     }
+    options=""
     fixcompname <- fixupname(c$compname)
     c1df <- data.frame(id = c$id,compname = fixcompname,
                        partid = c$partid,partname = c$partname,
                        layers=layers,
+                       options=options,
                        sca.x = vs[1],sca.y = vs[2],sca.z = vs[3],
                        trn.x = vt[1],trn.y = vt[2],trn.z = vt[3],
                        rot.11 = mr[1,1],rot.12 = mr[1,2],rot.13 = mr[1,3],
@@ -520,7 +546,7 @@ stldir <- "../Crazyflie-CAD/STL"
 stlfiles <- list.files(stldir,"\\.STL$")
 partVertList <- list()
 for (fname in stlfiles) {
-  partVertList <- readVertsFromStl(stldir,fname,partVertList)
+  partVertList <- readCzfVertsFromStl(stldir,fname,partVertList)
 }
 
 # Now read the composistion file which has the part instances, 
@@ -534,7 +560,7 @@ partAttList <- partAttList[order(sapply(partAttList,'[[',"partname"))] # order t
 
 compList <- plotWholeThing(partAttList,partVertList,compList)
 
-writeOutFiles("crazyflie",partAttList,partVertList,compList)
+writeOutCzfFiles("crazyflie",partAttList,partVertList,compList)
 
 elap <- as.numeric((Sys.time() - starttime)[1], units = "secs")
 print(sprintf("Run took %.1f secs for %d verts - verts optimized away:%d", elap,nvtot,nvsaved))
