@@ -15,9 +15,9 @@ colVekToStringColor <- function(clr) {
 }
 
 rgbToStringColor <- function(rvek,gvek,bvek) {
-  nr <- length(rvek)
-  m <- matrix(c(rvek,gvek,bvek),nr,3) # matrix with row as r,g,b
-  l <- lapply(1:dim(m)[1],function(x) m[x,]) # now unwrap into a list of rgb's
+  nv <- length(rvek)
+  m <- matrix(c(rvek,gvek,bvek),nv,3) # matrix with row as r,g,b
+  l <- lapply(1:nv,function(x) m[x,]) # now unwrap into a list of rgb's
   rgb <- sapply(l,colVekToStringColor)
 }
 
@@ -183,8 +183,8 @@ plotMesh <- function(obj,exclude=NULL,include=NULL,lax=F,quiet=T,wireframe=F) {
 
 
 
-open3d()
+jnk <- open3d()
 cfdir <- "./"
-robv <- readMesh(cfdir,"crazyflie",quiet=F)
-plotMesh(robv,exclude="cf",include="cf",lax=T,quiet=F,wireframe=T)
+robv <- readMesh(cfdir,"crazyflie",quiet=T)
+plotMesh(robv,exclude="cf",include="cf",lax=T,quiet=T,wireframe=T)
 addAxes(50)
