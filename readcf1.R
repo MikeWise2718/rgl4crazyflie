@@ -1,5 +1,4 @@
 library(rgl)
-library(hash)
 #
 #  Mike Wise - Nov/Dec 2016
 #
@@ -7,24 +6,35 @@ library(hash)
 #
 #
 
-colVekToStringColor <- function(clr) {
-  clr <- pmax(0,pmin(clr,1))
-  iclr <- round(255 * clr)
-  hclr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
-  return(hclr)
-}
-
 rgbToStringColor <- function(rvek,gvek,bvek) {
+  # Converts a 3 vector of rgb values (between 0 and 1) 
+  # to a single vector of color in R character format
+  # so rgb = c(1,0,0) would go to #ff0000 
+  colVekToStringColor <- function(clr) {
+    clr <- pmax(0,pmin(clr,1))
+    iclr <- round(255 * clr)
+    hclr <- sprintf("#%2.2x%2.2x%2.2x",iclr[[1]],iclr[[2]],iclr[[3]])
+    return(hclr)
+  }
   nv <- length(rvek)
   m <- matrix(c(rvek,gvek,bvek),nv,3) # matrix with row as r,g,b
   l <- lapply(1:nv,function(x) m[x,]) # now unwrap into a list of rgb's
   rgb <- sapply(l,colVekToStringColor)
 }
 
-readMesh <- function(cfdir="./",cfnameroot = "crazyflie",quiet=T) {
+readCompObj3d <- function(cfdir = "./",objnameroot,quiet = T) {
+  # Read a set of files specifying a object with parts, components, points and vertice indexes
+  # saved in four csv files
+  # Each component belongs to exactly one part
+  # points and vertice indices belong to a part, but can only be instanced via a component
+  # when instanced they are modified by the component transformation which can scale, transform and/or
+  # translate
+  # material properties are specfied via part
+  # one should probably have override options per component, but that would inflate the format
+  # Note that this routine also crunches some of the values for easier consumption later
 
   # Components
-  fnameroot <- sprintf("%s%s",cfdir,cfnameroot)
+  fnameroot <- sprintf("%s%s",cfdir,objnameroot)
   fname <- sprintf("%s-components.csv",fnameroot)
   cdf <- read.csv(fname)
   cdf <- cdf[cdf$id > 0,]
@@ -60,6 +70,8 @@ readMesh <- function(cfdir="./",cfnameroot = "crazyflie",quiet=T) {
   }
 
   rv <- list()
+  rv$objname <- objnameroot
+  rv$fnameroot <- fnameroot
   rv$cdf <- cdf
   rv$pdf <- pdf
   rv$ptdf <- ptdf
@@ -68,7 +80,9 @@ readMesh <- function(cfdir="./",cfnameroot = "crazyflie",quiet=T) {
 }
 
 
-addAxes <- function(len = 1,s = NULL,r = NULL,t = NULL,tit = "",charexp = 1) {
+addAxesToRgl <- function(len = 1,s = NULL,r = NULL,t = NULL,tit = "",charexp = 1) {
+  # Dislplay 3-legged axis (X,Y,Z) 
+  # potentially scaled, rotated and translated
 
   getHeadToTailPoints <- function(x,y,z) {
     m <- matrix(c(x,y,z),2,3)
@@ -115,7 +129,9 @@ addAxes <- function(len = 1,s = NULL,r = NULL,t = NULL,tit = "",charexp = 1) {
 }
 
 
-plotMesh <- function(obj,exclude=NULL,include=NULL,lax=F,quiet=T,wireframe=F) {
+renderCompObj3d <- function(obj,exclude = NULL,include = NULL,lax = F,quiet = T,wireframe = F) {
+  # Plot a ComObj3d
+  # potentially scaled, rotated and translated
   cdf <- obj$cdf
   pdf <- obj$pdf
   ptdf <- obj$ptdf
@@ -175,7 +191,7 @@ plotMesh <- function(obj,exclude=NULL,include=NULL,lax=F,quiet=T,wireframe=F) {
         shade3d(mesh,color = clr,alpha = pdf$amb.a[pidx])
       }
       if (lax) {
-        addAxes(10,t = trn,r = rot) # show the local coordinate system
+        addAxesToRgl(10,t = trn,r = rot) # show the local coordinate system
       }
     }
   }
@@ -185,6 +201,6 @@ plotMesh <- function(obj,exclude=NULL,include=NULL,lax=F,quiet=T,wireframe=F) {
 
 jnk <- open3d()
 cfdir <- "./"
-robv <- readMesh(cfdir,"crazyflie",quiet=T)
-plotMesh(robv,exclude="cf",include="cf",lax=T,quiet=T,wireframe=T)
-addAxes(50)
+robv <- readCompObj3d(cfdir,"crazyflie",quiet=T)
+renderCompObj3d(robv,exclude="cf",include="cf",lax=T,quiet=T,wireframe=T)
+addAxesToRgl(50)
